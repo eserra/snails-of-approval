@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type Category = {
   id: number;
@@ -13,6 +14,8 @@ type Category = {
 };
 
 export default function AdminCategoriesPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -93,12 +96,14 @@ export default function AdminCategoriesPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-        <button
-          onClick={startNew}
-          className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
-        >
-          + Add Category
-        </button>
+        {isAdmin && (
+          <button
+            onClick={startNew}
+            className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
+          >
+            + Add Category
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -180,33 +185,38 @@ export default function AdminCategoriesPage() {
                       {parent.name}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {parent._count.snails} direct &middot;{" "}
                       {children.reduce((sum, c) => sum + c._count.snails, 0) +
                         parent._count.snails}{" "}
-                      total
+                      snails
                     </span>
                   </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => startEdit(parent)}
-                      className="text-amber-700 hover:text-amber-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    {children.length === 0 && parent._count.snails === 0 && (
+                  {isAdmin && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => startEdit(parent)}
+                        className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleDelete(parent.id, parent.name)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        disabled={children.length > 0 || parent._count.snails > 0}
+                        className={`text-sm font-medium ${children.length > 0 || parent._count.snails > 0 ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:text-red-700"}`}
                       >
                         Delete
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Children */}
                 {children.length > 0 && (
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                      <col className="w-[50%]" />
+                      <col className="w-[25%]" />
+                      <col className="w-[25%]" />
+                    </colgroup>
                     <tbody className="divide-y divide-gray-100">
                       {children.map((child) => (
                         <tr
@@ -221,21 +231,24 @@ export default function AdminCategoriesPage() {
                             {child._count.snails} snails
                           </td>
                           <td className="px-5 py-3 text-right">
-                            <button
-                              onClick={() => startEdit(child)}
-                              className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
-                            >
-                              Edit
-                            </button>
-                            {child._count.snails === 0 && (
-                              <button
-                                onClick={() =>
-                                  handleDelete(child.id, child.name)
-                                }
-                                className="text-red-600 hover:text-red-700 text-sm font-medium"
-                              >
-                                Delete
-                              </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => startEdit(child)}
+                                  className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleDelete(child.id, child.name)
+                                  }
+                                  disabled={child._count.snails > 0}
+                                  className={`text-sm font-medium ${child._count.snails > 0 ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:text-red-700"}`}
+                                >
+                                  Delete
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>

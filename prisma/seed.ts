@@ -8,60 +8,112 @@ const adapter = new PrismaPg({
 });
 const prisma = new PrismaClient({ adapter });
 
+// SFUSA 2026 taxonomy from ArcGIS FeatureServer
+const SFUSA_TAXONOMY = [
+  {
+    slug: "agricultural",
+    name: "Agricultural",
+    children: [
+      { slug: "farm-orchard", name: "Farm / Orchard" },
+      { slug: "ranch-livestock", name: "Ranch / Livestock" },
+      { slug: "farmstead-dairy", name: "Farmstead Dairy" },
+      { slug: "winery-vineyard", name: "Winery / Vineyard" },
+      { slug: "fishery", name: "Fishery" },
+      { slug: "agricultural-other", name: "Other" },
+    ],
+  },
+  {
+    slug: "maker",
+    name: "Maker",
+    children: [
+      { slug: "brewery", name: "Brewery" },
+      { slug: "cheesemaker", name: "Cheesemaker" },
+      { slug: "cidery", name: "Cidery" },
+      { slug: "distillery", name: "Distillery" },
+      { slug: "salumeria", name: "Salumeria" },
+      { slug: "vintner", name: "Vintner" },
+      { slug: "maker-other", name: "Other" },
+    ],
+  },
+  {
+    slug: "food-service",
+    name: "Food Service",
+    children: [
+      { slug: "bakery", name: "Bakery" },
+      { slug: "bar", name: "Bar" },
+      { slug: "cafe", name: "Cafe" },
+      { slug: "caterer", name: "Caterer" },
+      { slug: "food-truck", name: "Food Truck" },
+      { slug: "restaurant", name: "Restaurant" },
+      { slug: "food-service-other", name: "Other" },
+    ],
+  },
+  {
+    slug: "supporting-organization",
+    name: "Supporting Organization",
+    children: [
+      { slug: "culinary-school", name: "Culinary School" },
+      { slug: "farmers-market", name: "Farmers' Market" },
+      { slug: "food-access", name: "Food Access" },
+      { slug: "food-bank", name: "Food Bank" },
+      { slug: "food-hub", name: "Food Hub" },
+      { slug: "market", name: "Market" },
+      { slug: "supporting-org-other", name: "Other" },
+    ],
+  },
+];
+
 async function main() {
-  // SFUSA two-level categories
-  const topLevel = [
-    { slug: "food-service", name: "Food Service" },
-    { slug: "maker", name: "Maker" },
-  ];
-
-  for (const cat of topLevel) {
-    await prisma.category.upsert({
-      where: { slug: cat.slug },
-      update: {},
-      create: cat,
-    });
+  // Clean up old categories that don't exist in the SFUSA taxonomy
+  const validSlugs = new Set<string>();
+  for (const top of SFUSA_TAXONOMY) {
+    validSlugs.add(top.slug);
+    for (const child of top.children) {
+      validSlugs.add(child.slug);
+    }
   }
 
-  const foodService = await prisma.category.findUnique({
-    where: { slug: "food-service" },
-  });
-  const maker = await prisma.category.findUnique({
-    where: { slug: "maker" },
-  });
-
-  const foodServiceChildren = [
-    "Restaurant",
-    "Bar",
-    "Brewery",
-    "Caterer",
-    "Wine Bar",
-    "Wine Shop",
-  ];
-
-  const makerChildren = ["Other"];
-
-  for (const name of foodServiceChildren) {
-    const slug = name.toLowerCase().replace(/\s+/g, "-");
-    await prisma.category.upsert({
-      where: { slug },
-      update: { parent: { connect: { id: foodService!.id } } },
-      create: { slug, name, parent: { connect: { id: foodService!.id } } },
-    });
+  const existing = await prisma.category.findMany();
+  for (const cat of existing) {
+    if (!validSlugs.has(cat.slug)) {
+      // Unassign snails before deleting
+      await prisma.snail.updateMany({
+        where: { categoryId: cat.id },
+        data: { categoryId: null },
+      });
+      await prisma.category.delete({ where: { id: cat.id } });
+      console.log(`  Removed old category: ${cat.name} (${cat.slug})`);
+    }
   }
 
-  for (const name of makerChildren) {
-    const slug = name.toLowerCase().replace(/\s+/g, "-");
-    await prisma.category.upsert({
-      where: { slug },
-      update: { parent: { connect: { id: maker!.id } } },
-      create: { slug, name, parent: { connect: { id: maker!.id } } },
+  // Upsert SFUSA taxonomy
+  for (const top of SFUSA_TAXONOMY) {
+    const parent = await prisma.category.upsert({
+      where: { slug: top.slug },
+      update: { name: top.name, parentId: null },
+      create: { slug: top.slug, name: top.name },
     });
+
+    for (const child of top.children) {
+      await prisma.category.upsert({
+        where: { slug: child.slug },
+        update: {
+          name: child.name,
+          parent: { connect: { id: parent.id } },
+        },
+        create: {
+          slug: child.slug,
+          name: child.name,
+          parent: { connect: { id: parent.id } },
+        },
+      });
+    }
   }
 
-  console.log(
-    `Seeded ${topLevel.length + foodServiceChildren.length + makerChildren.length} categories (2-level hierarchy)`
-  );
+  const totalCats =
+    SFUSA_TAXONOMY.length +
+    SFUSA_TAXONOMY.reduce((sum, t) => sum + t.children.length, 0);
+  console.log(`Seeded ${totalCats} categories (SFUSA 2026 taxonomy)`);
 
   // Chapters
   const chapters = [
@@ -103,7 +155,10 @@ async function main() {
     { email: "matt@snailsofapproval.org", name: "Matt" },
     { email: "karen.guzman@snailsofapproval.org", name: "Karen Guzman" },
     { email: "edlin.choi@snailsofapproval.org", name: "Edlin Choi" },
-    { email: "charlie.marshall@snailsofapproval.org", name: "Charlie Marshall" },
+    {
+      email: "charlie.marshall@snailsofapproval.org",
+      name: "Charlie Marshall",
+    },
     { email: "richa@snailsofapproval.org", name: "Richa" },
   ];
 
@@ -119,7 +174,9 @@ async function main() {
       },
     });
   }
-  console.log(`Seeded ${volunteers.length} volunteer users (password: changeme123)`);
+  console.log(
+    `Seeded ${volunteers.length} volunteer users (password: changeme123)`
+  );
 }
 
 main()
