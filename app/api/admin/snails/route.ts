@@ -8,7 +8,7 @@ import { requireWrite } from "@/lib/rbac";
 export async function GET() {
   try {
     const snails = await prisma.snail.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: { name: "asc" },
       include: {
         chapter: { select: { name: true } },
         category: { select: { name: true } },
