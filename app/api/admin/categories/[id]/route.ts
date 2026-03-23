@@ -11,9 +11,14 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json();
 
+  const data: { name?: string; parentId?: number | null } = {};
+  if (body.name !== undefined) data.name = body.name;
+  if (body.parentId !== undefined)
+    data.parentId = body.parentId ? parseInt(body.parentId) : null;
+
   const category = await prisma.category.update({
     where: { id: parseInt(id) },
-    data: { name: body.name },
+    data,
   });
 
   return NextResponse.json(category);

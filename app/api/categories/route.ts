@@ -5,7 +5,9 @@ export async function GET() {
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { snails: { where: { status: "published" } } } },
+      parent: { select: { id: true, name: true } },
+      children: { select: { id: true, name: true, slug: true }, orderBy: { name: "asc" } },
+      _count: { select: { snails: true } },
     },
   });
 

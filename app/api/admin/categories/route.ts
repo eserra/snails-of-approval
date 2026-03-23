@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     data: {
       slug,
       name: body.name,
+      parentId: body.parentId ? parseInt(body.parentId) : null,
     },
   });
 
