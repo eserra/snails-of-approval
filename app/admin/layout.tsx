@@ -100,7 +100,7 @@ function AdminNav() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)] p-4 flex-col">
+      <aside className="hidden md:flex w-60 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] sticky top-16 p-4 flex-col overflow-y-auto">
         <div className="mb-6 px-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Admin Panel</span>
         </div>
