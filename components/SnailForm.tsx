@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 type Chapter = { id: number; name: string };
 type Category = {
@@ -457,10 +458,16 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={labelClass}>Address</label>
-            <input
+            <AddressAutocomplete
               value={form.address}
-              onChange={(e) => update("address", e.target.value)}
-              placeholder="Will be geocoded automatically"
+              onChange={(address, lat, lon) => {
+                update("address", address);
+                if (lat && lon) {
+                  update("latitude", lat);
+                  update("longitude", lon);
+                }
+              }}
+              placeholder="Start typing to search..."
               className={inputClass}
             />
           </div>
