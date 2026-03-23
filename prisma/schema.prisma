@@ -68,8 +68,9 @@ model Snail {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // CRM Pipeline
-  awardStatus    String? @map("award_status")
-  pipelineStage  String? @map("pipeline_stage")
+  track          String  @default("lead") @map("track")
+  stage          String? @map("stage")
+  formerAwardee  Boolean @default(false) @map("former_awardee")
   renewalDueYear Int?    @map("renewal_due_year")
   businessStatus String? @map("business_status")
   source         String?

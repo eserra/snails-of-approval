@@ -4,7 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 type Chapter = { id: number; name: string };
-type Category = { id: number; name: string };
+type Category = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  children?: { id: number; name: string }[];
+};
 type UserOption = { id: number; name: string };
 type NoteData = {
   id: number;
@@ -31,8 +36,9 @@ type SnailData = {
   categoryId: string;
   chapterId: string;
   // CRM fields
-  awardStatus: string;
-  pipelineStage: string;
+  track: string;
+  stage: string;
+  formerAwardee: boolean;
   renewalDueYear: string;
   businessStatus: string;
   source: string;
@@ -69,8 +75,9 @@ const emptySnail: SnailData = {
   status: "draft",
   categoryId: "",
   chapterId: "",
-  awardStatus: "",
-  pipelineStage: "",
+  track: "lead",
+  stage: "New",
+  formerAwardee: false,
   renewalDueYear: "",
   businessStatus: "",
   source: "",
@@ -236,11 +243,22 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
               className={`${inputClass} bg-white`}
             >
               <option value="">Select category...</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
+              {categories
+                .filter((cat) => !cat.parentId)
+                .map((parent) => {
+                  const children = categories.filter(
+                    (c) => c.parentId === parent.id
+                  );
+                  return (
+                    <optgroup key={parent.id} label={parent.name}>
+                      {children.map((child) => (
+                        <option key={child.id} value={child.id}>
+                          {child.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
             </select>
           </div>
 
@@ -261,33 +279,66 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
         <h2 className="text-sm font-semibold text-gray-900">CRM Status</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass}>Award Status</label>
+            <label className={labelClass}>Track</label>
             <select
-              value={form.awardStatus}
-              onChange={(e) => update("awardStatus", e.target.value)}
+              value={form.track}
+              onChange={(e) => {
+                const newTrack = e.target.value;
+                update("track", newTrack);
+                // Reset stage to appropriate default when track changes
+                if (newTrack === "lead") {
+                  update("stage", form.formerAwardee ? "Lapsed" : "New");
+                } else {
+                  update("stage", "Onboarding");
+                }
+              }}
               className={`${inputClass} bg-white`}
             >
-              <option value="">Select...</option>
-              <option value="Active Awardee 2026">Active Awardee 2026</option>
-              <option value="Former / Lapsed Awardee">Former / Lapsed Awardee</option>
-              <option value="Lead / Target">Lead / Target</option>
+              <option value="lead">Lead</option>
+              <option value="active">Active</option>
             </select>
           </div>
 
           <div>
-            <label className={labelClass}>Pipeline Stage</label>
+            <label className={labelClass}>Stage</label>
             <select
-              value={form.pipelineStage}
-              onChange={(e) => update("pipelineStage", e.target.value)}
+              value={form.stage}
+              onChange={(e) => update("stage", e.target.value)}
               className={`${inputClass} bg-white`}
             >
-              <option value="">Select...</option>
-              <option value="Active">Active</option>
-              <option value="Awarded">Awarded</option>
-              <option value="1 - Contacted">1 - Contacted</option>
-              <option value="Former">Former</option>
-              <option value="Blocked">Blocked</option>
+              {form.track === "lead" ? (
+                <>
+                  <option value="Lapsed">Lapsed</option>
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Application Filled">Application Filled</option>
+                  <option value="Site Visit Completed">Site Visit Completed</option>
+                  <option value="Up for Vote">Up for Vote</option>
+                  <option value="Blocked">Blocked</option>
+                </>
+              ) : (
+                <>
+                  <option value="Onboarding">Onboarding</option>
+                  <option value="Active">Active</option>
+                  <option value="Renewal Due">Renewal Due</option>
+                  <option value="Renewal Submitted">Renewal Submitted</option>
+                  <option value="Blocked">Blocked</option>
+                </>
+              )}
             </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.formerAwardee}
+              onChange={(e) => update("formerAwardee", e.target.checked)}
+              className={checkboxClass}
+              id="formerAwardee"
+            />
+            <label htmlFor="formerAwardee" className="text-sm text-gray-700">
+              Former Awardee
+            </label>
           </div>
 
           <div>
@@ -322,7 +373,7 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             />
           </div>
 
-          {form.pipelineStage === "Blocked" && (
+          {form.stage === "Blocked" && (
             <div>
               <label className={labelClass}>Blocked/Rejected Reason</label>
               <input

@@ -76,9 +76,25 @@ async function main() {
     }
 
     // Parse fields
-    const awardStatus = str(row["Category"]);
+    const rawAwardStatus = str(row["Category"]);
+    const rawPipelineStage = str(row["Stage / Status"]);
     const onSfusaMap = String(row["On SFUSA Map"] || "").toLowerCase() === "yes";
-    const pipelineStage = str(row["Stage / Status"]);
+
+    // Map to track/stage/formerAwardee
+    const formerAwardee = rawAwardStatus?.includes("Former") || false;
+    let track = "lead";
+    if (rawAwardStatus?.includes("Active Awardee")) track = "active";
+
+    let stage: string | null = null;
+    if (rawPipelineStage === "Active" || rawPipelineStage === "Awarded") stage = "Active";
+    else if (rawPipelineStage === "1 - Contacted") stage = "Contacted";
+    else if (rawPipelineStage === "Former") stage = "Lapsed";
+    else if (rawPipelineStage) stage = rawPipelineStage;
+
+    // Fill in defaults
+    if (!stage && formerAwardee) stage = "Lapsed";
+    if (!stage && track === "lead") stage = "New";
+    if (!stage && track === "active") stage = "Active";
     const businessStatus = str(row["Business Status"]);
     const source = str(row["Source"]);
     const establishmentType = str(row["Establishment Type (SFNYC)"]);
@@ -108,9 +124,7 @@ async function main() {
     const stickersDelivered = Boolean(row["SOA Stickers Delivered"]);
 
     // Determine published status
-    const status = awardStatus?.includes("Active Awardee")
-      ? "published"
-      : "draft";
+    const status = track === "active" ? "published" : "draft";
 
     // Look up assignee
     const assigneeName = String(row["Assignee"] || "")
@@ -136,8 +150,9 @@ async function main() {
       website,
       instagramUrl,
       status,
-      awardStatus,
-      pipelineStage,
+      track,
+      stage,
+      formerAwardee,
       renewalDueYear,
       businessStatus,
       source,

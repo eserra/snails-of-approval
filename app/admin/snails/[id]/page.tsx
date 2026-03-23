@@ -29,8 +29,9 @@ export default function EditSnailPage() {
           instagramUrl: data.instagramUrl || "",
           photoUrl: data.photoUrl || "",
           // CRM fields
-          awardStatus: data.awardStatus || "",
-          pipelineStage: data.pipelineStage || "",
+          track: data.track || "lead",
+          stage: data.stage || "",
+          formerAwardee: data.formerAwardee || false,
           renewalDueYear: data.renewalDueYear ?? "",
           businessStatus: data.businessStatus || "",
           source: data.source || "",

@@ -9,33 +9,40 @@ type Snail = {
   name: string;
   slug: string;
   status: string;
-  awardStatus: string | null;
-  pipelineStage: string | null;
+  track: string;
+  stage: string | null;
+  formerAwardee: boolean;
   establishmentType: string | null;
   assigneeId: number | null;
   chapter: { name: string };
-  category: { name: string } | null;
+  category: { name: string; parent: { name: string } | null } | null;
   assignee: { name: string } | null;
 };
 
-type Tab = "all" | "active" | "leads" | "former" | "mine";
+type Tab = "all" | "active" | "leads" | "lapsed" | "mine";
 
 const stageBadge: Record<string, string> = {
+  New: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
+  Contacted: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
+  "Application Filled": "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+  "Site Visit Completed": "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20",
+  "Up for Vote": "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
+  Onboarding: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-600/20",
   Active: "bg-green-50 text-green-700 ring-1 ring-green-600/20",
-  Awarded: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
-  "1 - Contacted": "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
-  Former: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
+  "Renewal Due": "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
+  "Renewal Submitted": "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+  Lapsed: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
   Blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
 };
 
 function matchesTab(snail: Snail, tab: Tab, userId: string | undefined) {
   switch (tab) {
     case "active":
-      return snail.awardStatus?.includes("Active");
+      return snail.track === "active";
     case "leads":
-      return snail.awardStatus === "Lead / Target";
-    case "former":
-      return snail.awardStatus?.includes("Former");
+      return snail.track === "lead" && snail.stage !== "Lapsed";
+    case "lapsed":
+      return snail.track === "lead" && snail.formerAwardee && snail.stage === "Lapsed";
     case "mine":
       return userId && String(snail.assigneeId) === userId;
     default:
@@ -63,9 +70,11 @@ export default function AdminSnailsPage() {
 
   const counts = {
     all: snails.length,
-    active: snails.filter((s) => s.awardStatus?.includes("Active")).length,
-    leads: snails.filter((s) => s.awardStatus === "Lead / Target").length,
-    former: snails.filter((s) => s.awardStatus?.includes("Former")).length,
+    active: snails.filter((s) => s.track === "active").length,
+    leads: snails.filter((s) => s.track === "lead" && s.stage !== "Lapsed").length,
+    lapsed: snails.filter(
+      (s) => s.track === "lead" && s.formerAwardee && s.stage === "Lapsed"
+    ).length,
     mine: snails.filter(
       (s) => userId && String(s.assigneeId) === userId
     ).length,
@@ -81,7 +90,7 @@ export default function AdminSnailsPage() {
     { key: "all", label: "All" },
     { key: "active", label: "Active" },
     { key: "leads", label: "Leads" },
-    { key: "former", label: "Former" },
+    { key: "lapsed", label: "Lapsed" },
     { key: "mine", label: "My Snails" },
   ];
 
@@ -136,14 +145,17 @@ export default function AdminSnailsPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm min-w-[900px]">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
                     Name
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    Category
+                    SFUSA Category
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">
+                    SFNYC Legacy
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
                     Stage
@@ -169,18 +181,29 @@ export default function AdminSnailsPage() {
                       >
                         {snail.name}
                       </Link>
+                      {snail.formerAwardee && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-600/20">
+                          Former
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {snail.category?.name ||
-                        snail.establishmentType ||
-                        "—"}
+                      {snail.category ? (
+                        <>
+                          <span className="text-gray-400">{snail.category.parent?.name} &rsaquo; </span>
+                          {snail.category.name}
+                        </>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {snail.establishmentType || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {snail.pipelineStage && (
+                      {snail.stage && (
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${stageBadge[snail.pipelineStage] || "bg-gray-100 text-gray-600"}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${stageBadge[snail.stage] || "bg-gray-100 text-gray-600"}`}
                         >
-                          {snail.pipelineStage}
+                          {snail.stage}
                         </span>
                       )}
                     </td>

@@ -11,7 +11,7 @@ export async function GET() {
       orderBy: { name: "asc" },
       include: {
         chapter: { select: { name: true } },
-        category: { select: { name: true } },
+        category: { select: { name: true, parent: { select: { name: true } } } },
         assignee: { select: { name: true } },
       },
     });
@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
       chapterId: parseInt(body.chapterId),
       createdById: token?.sub ? parseInt(token.sub) : null,
       // CRM fields
-      awardStatus: body.awardStatus || null,
-      pipelineStage: body.pipelineStage || null,
+      track: body.track || "lead",
+      stage: body.stage || null,
+      formerAwardee: body.formerAwardee || false,
       renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
       businessStatus: body.businessStatus || null,
       source: body.source || null,

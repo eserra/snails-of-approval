@@ -61,8 +61,9 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       categoryId: body.categoryId ? parseInt(body.categoryId) : null,
       chapterId: parseInt(body.chapterId),
       // CRM fields
-      awardStatus: body.awardStatus || null,
-      pipelineStage: body.pipelineStage || null,
+      track: body.track || "lead",
+      stage: body.stage || null,
+      formerAwardee: body.formerAwardee || false,
       renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
       businessStatus: body.businessStatus || null,
       source: body.source || null,
