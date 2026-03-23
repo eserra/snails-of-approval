@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         String   @default("editor") // admin, editor, viewer
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  snails Snail[]
+
+  @@map("users")
+}
+
+model Chapter {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  name      String
+  state     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snails Snail[]
+
+  @@map("chapters")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snails Snail[]
+
+  @@map("categories")
+}
+
+model Snail {
+  id           Int      @id @default(autoincrement())
+  slug         String   @unique
+  name         String
+  yearAwarded  Int      @map("year_awarded")
+  description  String?  @db.Text
+  address      String?
+  latitude     Decimal? @db.Decimal(10, 7)
+  longitude    Decimal? @db.Decimal(10, 7)
+  email        String?
+  phone        String?
+  website      String?
+  facebookUrl  String?  @map("facebook_url")
+  instagramUrl String?  @map("instagram_url")
+  photoUrl     String?  @map("photo_url")
+  status       String   @default("draft") // draft, published
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  categoryId  Int      @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id])
+  chapterId   Int      @map("chapter_id")
+  chapter     Chapter  @relation(fields: [chapterId], references: [id])
+  createdById Int?     @map("created_by_id")
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+
+  @@map("snails")
+}
