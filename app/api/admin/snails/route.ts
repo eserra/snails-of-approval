@@ -5,15 +5,21 @@ import { slugify } from "@/lib/slug";
 import { geocodeAddress } from "@/lib/geocode";
 import { requireWrite } from "@/lib/rbac";
 
-export async function GET(request: NextRequest) {
-  const snails = await prisma.snail.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      chapter: { select: { name: true } },
-      category: { select: { name: true } },
-    },
-  });
-  return NextResponse.json(snails);
+export async function GET() {
+  try {
+    const snails = await prisma.snail.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        chapter: { select: { name: true } },
+        category: { select: { name: true } },
+        assignee: { select: { name: true } },
+      },
+    });
+    return NextResponse.json(snails);
+  } catch (error) {
+    console.error("Failed to fetch snails:", error);
+    return NextResponse.json({ error: "Failed to fetch snails" }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -23,7 +29,6 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
 
   let slug = slugify(body.name);
-  // Ensure unique slug
   const existing = await prisma.snail.findUnique({ where: { slug } });
   if (existing) {
     slug = `${slug}-${Date.now()}`;
@@ -44,7 +49,7 @@ export async function POST(request: NextRequest) {
     data: {
       slug,
       name: body.name,
-      yearAwarded: parseInt(body.yearAwarded),
+      yearAwarded: body.yearAwarded ? parseInt(body.yearAwarded) : null,
       description: body.description || null,
       address: body.address || null,
       latitude,
@@ -56,9 +61,28 @@ export async function POST(request: NextRequest) {
       instagramUrl: body.instagramUrl || null,
       photoUrl: body.photoUrl || null,
       status: body.status || "draft",
-      categoryId: parseInt(body.categoryId),
+      categoryId: body.categoryId ? parseInt(body.categoryId) : null,
       chapterId: parseInt(body.chapterId),
       createdById: token?.sub ? parseInt(token.sub) : null,
+      // CRM fields
+      awardStatus: body.awardStatus || null,
+      pipelineStage: body.pipelineStage || null,
+      renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
+      businessStatus: body.businessStatus || null,
+      source: body.source || null,
+      blockedReason: body.blockedReason || null,
+      contactName: body.contactName || null,
+      borough: body.borough || null,
+      zip: body.zip || null,
+      onSfusaMap: body.onSfusaMap || false,
+      sfusaCategory: body.sfusaCategory || null,
+      sfusaSubtype: body.sfusaSubtype || null,
+      establishmentType: body.establishmentType || null,
+      assigneeId: body.assigneeId ? parseInt(body.assigneeId) : null,
+      lastTouchDate: body.lastTouchDate ? new Date(body.lastTouchDate) : null,
+      welcomeLetterSent: body.welcomeLetterSent || false,
+      stickersDelivered: body.stickersDelivered || false,
+      diversityTags: body.diversityTags || null,
     },
   });
 

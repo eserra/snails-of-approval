@@ -43,15 +43,19 @@ export default async function SnailDetailPage({ params }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex justify-between items-start mb-4">
           <h1 className="text-2xl font-bold text-gray-900">{snail.name}</h1>
-          <span className="text-sm bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
-            {snail.yearAwarded}
-          </span>
+          {snail.yearAwarded && (
+            <span className="text-sm bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
+              {snail.yearAwarded}
+            </span>
+          )}
         </div>
 
         <div className="flex gap-2 mb-4">
-          <span className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded">
-            {snail.category.name}
-          </span>
+          {snail.category && (
+            <span className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              {snail.category.name}
+            </span>
+          )}
           <Link
             href={`/chapters/${snail.chapter.slug}`}
             className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"

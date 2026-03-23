@@ -15,8 +15,8 @@ export default function EditSnailPage() {
       .then((data) => {
         setSnail({
           ...data,
-          yearAwarded: data.yearAwarded,
-          categoryId: String(data.categoryId),
+          yearAwarded: data.yearAwarded ?? "",
+          categoryId: data.categoryId ? String(data.categoryId) : "",
           chapterId: String(data.chapterId),
           description: data.description || "",
           address: data.address || "",
@@ -28,6 +28,28 @@ export default function EditSnailPage() {
           facebookUrl: data.facebookUrl || "",
           instagramUrl: data.instagramUrl || "",
           photoUrl: data.photoUrl || "",
+          // CRM fields
+          awardStatus: data.awardStatus || "",
+          pipelineStage: data.pipelineStage || "",
+          renewalDueYear: data.renewalDueYear ?? "",
+          businessStatus: data.businessStatus || "",
+          source: data.source || "",
+          blockedReason: data.blockedReason || "",
+          contactName: data.contactName || "",
+          borough: data.borough || "",
+          zip: data.zip || "",
+          onSfusaMap: data.onSfusaMap || false,
+          sfusaCategory: data.sfusaCategory || "",
+          sfusaSubtype: data.sfusaSubtype || "",
+          establishmentType: data.establishmentType || "",
+          assigneeId: data.assigneeId ? String(data.assigneeId) : "",
+          lastTouchDate: data.lastTouchDate
+            ? new Date(data.lastTouchDate).toISOString().split("T")[0]
+            : "",
+          welcomeLetterSent: data.welcomeLetterSent || false,
+          stickersDelivered: data.stickersDelivered || false,
+          diversityTags: data.diversityTags || "",
+          notes: data.notes || [],
         });
         setLoading(false);
       });

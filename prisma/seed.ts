@@ -9,23 +9,59 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Categories
-  const categories = [
-    { slug: "restaurant", name: "Restaurant" },
-    { slug: "farm", name: "Farm" },
-    { slug: "producer", name: "Producer" },
-    { slug: "market", name: "Market" },
-    { slug: "bakery", name: "Bakery" },
+  // SFUSA two-level categories
+  const topLevel = [
+    { slug: "food-service", name: "Food Service" },
+    { slug: "maker", name: "Maker" },
   ];
 
-  for (const cat of categories) {
+  for (const cat of topLevel) {
     await prisma.category.upsert({
       where: { slug: cat.slug },
       update: {},
       create: cat,
     });
   }
-  console.log(`Seeded ${categories.length} categories`);
+
+  const foodService = await prisma.category.findUnique({
+    where: { slug: "food-service" },
+  });
+  const maker = await prisma.category.findUnique({
+    where: { slug: "maker" },
+  });
+
+  const foodServiceChildren = [
+    "Restaurant",
+    "Bar",
+    "Brewery",
+    "Caterer",
+    "Wine Bar",
+    "Wine Shop",
+  ];
+
+  const makerChildren = ["Other"];
+
+  for (const name of foodServiceChildren) {
+    const slug = name.toLowerCase().replace(/\s+/g, "-");
+    await prisma.category.upsert({
+      where: { slug },
+      update: { parent: { connect: { id: foodService!.id } } },
+      create: { slug, name, parent: { connect: { id: foodService!.id } } },
+    });
+  }
+
+  for (const name of makerChildren) {
+    const slug = name.toLowerCase().replace(/\s+/g, "-");
+    await prisma.category.upsert({
+      where: { slug },
+      update: { parent: { connect: { id: maker!.id } } },
+      create: { slug, name, parent: { connect: { id: maker!.id } } },
+    });
+  }
+
+  console.log(
+    `Seeded ${topLevel.length + foodServiceChildren.length + makerChildren.length} categories (2-level hierarchy)`
+  );
 
   // Chapters
   const chapters = [
@@ -45,18 +81,45 @@ async function main() {
   console.log(`Seeded ${chapters.length} chapters`);
 
   // Admin user
-  const passwordHash = await bcrypt.hash("admin123", 12);
+  const defaultPassword = await bcrypt.hash("admin123", 12);
   await prisma.user.upsert({
     where: { email: "admin@snailsofapproval.org" },
     update: {},
     create: {
       email: "admin@snailsofapproval.org",
-      passwordHash,
+      passwordHash: defaultPassword,
       name: "Admin",
       role: "admin",
     },
   });
   console.log("Seeded admin user (admin@snailsofapproval.org / admin123)");
+
+  // Volunteer users from the spreadsheet
+  const volunteerPassword = await bcrypt.hash("changeme123", 12);
+  const volunteers = [
+    { email: "barbara@snailsofapproval.org", name: "Barbara" },
+    { email: "kyle.karnuta@snailsofapproval.org", name: "Kyle Karnuta" },
+    { email: "laura.hoffman@snailsofapproval.org", name: "Laura Hoffman" },
+    { email: "matt@snailsofapproval.org", name: "Matt" },
+    { email: "karen.guzman@snailsofapproval.org", name: "Karen Guzman" },
+    { email: "edlin.choi@snailsofapproval.org", name: "Edlin Choi" },
+    { email: "charlie.marshall@snailsofapproval.org", name: "Charlie Marshall" },
+    { email: "richa@snailsofapproval.org", name: "Richa" },
+  ];
+
+  for (const v of volunteers) {
+    await prisma.user.upsert({
+      where: { email: v.email },
+      update: {},
+      create: {
+        email: v.email,
+        passwordHash: volunteerPassword,
+        name: v.name,
+        role: "editor",
+      },
+    });
+  }
+  console.log(`Seeded ${volunteers.length} volunteer users (password: changeme123)`);
 }
 
 main()

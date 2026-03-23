@@ -3,10 +3,10 @@ import Link from "next/link";
 type SnailCardProps = {
   slug: string;
   name: string;
-  yearAwarded: number;
+  yearAwarded: number | null;
   description: string | null;
   chapter: { name: string };
-  category: { name: string };
+  category: { name: string } | null;
 };
 
 export default function SnailCard({
@@ -24,12 +24,14 @@ export default function SnailCard({
     >
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-gray-900">{name}</h3>
-        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full whitespace-nowrap ml-2">
-          {yearAwarded}
-        </span>
+        {yearAwarded && (
+          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full whitespace-nowrap ml-2">
+            {yearAwarded}
+          </span>
+        )}
       </div>
       <div className="flex gap-2 mb-2">
-        <span className="text-xs text-gray-500">{category.name}</span>
+        <span className="text-xs text-gray-500">{category?.name}</span>
         <span className="text-xs text-gray-400">&middot;</span>
         <span className="text-xs text-gray-500">{chapter.name}</span>
       </div>

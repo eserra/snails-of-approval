@@ -15,7 +15,9 @@ model User {
   role         String   @default("editor") // admin, editor, viewer
   createdAt    DateTime @default(now()) @map("created_at")
 
-  snails Snail[]
+  snails         Snail[]
+  assignedSnails Snail[] @relation("assignedSnails")
+  authoredNotes  Note[]  @relation("authoredNotes")
 
   @@map("users")
 }
@@ -33,10 +35,13 @@ model Chapter {
 }
 
 model Category {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique
+  id        Int        @id @default(autoincrement())
+  slug      String     @unique
   name      String
-  createdAt DateTime @default(now()) @map("created_at")
+  parentId  Int?       @map("parent_id")
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+  createdAt DateTime   @default(now()) @map("created_at")
 
   snails Snail[]
 
@@ -47,7 +52,7 @@ model Snail {
   id           Int      @id @default(autoincrement())
   slug         String   @unique
   name         String
-  yearAwarded  Int      @map("year_awarded")
+  yearAwarded  Int?     @map("year_awarded")
   description  String?  @db.Text
   address      String?
   latitude     Decimal? @db.Decimal(10, 7)
@@ -62,12 +67,58 @@ model Snail {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  categoryId  Int      @map("category_id")
-  category    Category @relation(fields: [categoryId], references: [id])
-  chapterId   Int      @map("chapter_id")
-  chapter     Chapter  @relation(fields: [chapterId], references: [id])
-  createdById Int?     @map("created_by_id")
-  createdBy   User?    @relation(fields: [createdById], references: [id])
+  // CRM Pipeline
+  awardStatus    String? @map("award_status")
+  pipelineStage  String? @map("pipeline_stage")
+  renewalDueYear Int?    @map("renewal_due_year")
+  businessStatus String? @map("business_status")
+  source         String?
+  blockedReason  String? @map("blocked_reason")
+
+  // Contact at the establishment
+  contactName String? @map("contact_name")
+
+  // Geography
+  borough String?
+  zip     String?
+
+  // SFUSA national mapping
+  onSfusaMap    Boolean @default(false) @map("on_sfusa_map")
+  sfusaCategory String? @map("sfusa_category")
+  sfusaSubtype  String? @map("sfusa_subtype")
+
+  // Transitional (to be removed once SFUSA categories fully adopted)
+  establishmentType String? @map("establishment_type")
+
+  // CRM tracking
+  assigneeId        Int?      @map("assignee_id")
+  lastTouchDate     DateTime? @map("last_touch_date")
+  welcomeLetterSent Boolean   @default(false) @map("welcome_letter_sent")
+  stickersDelivered Boolean   @default(false) @map("stickers_delivered")
+  diversityTags     String?   @map("diversity_tags")
+
+  // Relations
+  categoryId  Int?      @map("category_id")
+  category    Category? @relation(fields: [categoryId], references: [id])
+  chapterId   Int       @map("chapter_id")
+  chapter     Chapter   @relation(fields: [chapterId], references: [id])
+  createdById Int?      @map("created_by_id")
+  createdBy   User?     @relation(fields: [createdById], references: [id])
+  assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
+  notes       Note[]
 
   @@map("snails")
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snailId  Int   @map("snail_id")
+  snail    Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
+  authorId Int   @map("author_id")
+  author   User  @relation("authoredNotes", fields: [authorId], references: [id])
+
+  @@map("notes")
 }

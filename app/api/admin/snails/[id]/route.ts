@@ -12,6 +12,11 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     include: {
       chapter: { select: { name: true } },
       category: { select: { name: true } },
+      assignee: { select: { id: true, name: true } },
+      notes: {
+        orderBy: { createdAt: "desc" },
+        include: { author: { select: { name: true } } },
+      },
     },
   });
   if (!snail) {
@@ -41,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     where: { id: parseInt(id) },
     data: {
       name: body.name,
-      yearAwarded: parseInt(body.yearAwarded),
+      yearAwarded: body.yearAwarded ? parseInt(body.yearAwarded) : null,
       description: body.description || null,
       address: body.address || null,
       latitude,
@@ -53,8 +58,27 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       instagramUrl: body.instagramUrl || null,
       photoUrl: body.photoUrl || null,
       status: body.status || "draft",
-      categoryId: parseInt(body.categoryId),
+      categoryId: body.categoryId ? parseInt(body.categoryId) : null,
       chapterId: parseInt(body.chapterId),
+      // CRM fields
+      awardStatus: body.awardStatus || null,
+      pipelineStage: body.pipelineStage || null,
+      renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
+      businessStatus: body.businessStatus || null,
+      source: body.source || null,
+      blockedReason: body.blockedReason || null,
+      contactName: body.contactName || null,
+      borough: body.borough || null,
+      zip: body.zip || null,
+      onSfusaMap: body.onSfusaMap || false,
+      sfusaCategory: body.sfusaCategory || null,
+      sfusaSubtype: body.sfusaSubtype || null,
+      establishmentType: body.establishmentType || null,
+      assigneeId: body.assigneeId ? parseInt(body.assigneeId) : null,
+      lastTouchDate: body.lastTouchDate ? new Date(body.lastTouchDate) : null,
+      welcomeLetterSent: body.welcomeLetterSent || false,
+      stickersDelivered: body.stickersDelivered || false,
+      diversityTags: body.diversityTags || null,
     },
   });
 
