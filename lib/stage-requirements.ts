@@ -30,6 +30,31 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
   ],
 };
 
+/** Ordered pipeline stages per track (excluding side-track states like Blocked/Lapsed) */
+export const pipelineStages: Record<string, string[]> = {
+  lead: [
+    "New",
+    "Contacted",
+    "Application Filled",
+    "Site Visit Completed",
+    "Up for Vote",
+  ],
+  active: ["Onboarding", "Active", "Renewal Due", "Renewal Submitted"],
+};
+
+/** CTA hints encouraging the volunteer to advance the snail to the next stage */
+export const stageCTAHints: Record<string, string> = {
+  New: "Reach out to this lead",
+  Contacted: "Send or collect the application form",
+  "Application Filled": "Schedule a site visit",
+  "Site Visit Completed": "Submit for committee vote",
+  "Up for Vote": "Waiting for vote results",
+  Onboarding: "Send welcome letter and stickers",
+  Active: "Monitor until renewal is due",
+  "Renewal Due": "Request renewal submission",
+  "Renewal Submitted": "Review renewal application",
+};
+
 export function validateStageChange(
   newStage: string,
   snail: {
