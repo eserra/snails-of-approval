@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
 import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
+import { attachmentConfig } from "@/lib/attachment-config";
 
 type Chapter = { id: number; name: string };
 type Category = {
@@ -668,28 +669,20 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
       {isEdit && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
           <h2 className="text-sm font-semibold text-gray-900">Attachments</h2>
-          <FileUpload
-            snailId={snail!.id!}
-            category="application"
-            label="Application"
-            attachments={attachments.filter((a) => a.category === "application")}
-            onUpload={(a) => setAttachments((prev) => [a, ...prev])}
-            onDelete={(id) =>
-              setAttachments((prev) => prev.filter((a) => a.id !== id))
-            }
-          />
-          <FileUpload
-            snailId={snail!.id!}
-            category="site-visit-report"
-            label="Site Visit Report"
-            attachments={attachments.filter(
-              (a) => a.category === "site-visit-report"
-            )}
-            onUpload={(a) => setAttachments((prev) => [a, ...prev])}
-            onDelete={(id) =>
-              setAttachments((prev) => prev.filter((a) => a.id !== id))
-            }
-          />
+          {Object.entries(attachmentConfig).map(([category, config]) => (
+            <FileUpload
+              key={category}
+              snailId={snail!.id!}
+              category={category}
+              label={config.label}
+              maxCount={config.maxCount}
+              attachments={attachments.filter((a) => a.category === category)}
+              onUpload={(a) => setAttachments((prev) => [a, ...prev])}
+              onDelete={(id) =>
+                setAttachments((prev) => prev.filter((a) => a.id !== id))
+              }
+            />
+          ))}
         </div>
       )}
 

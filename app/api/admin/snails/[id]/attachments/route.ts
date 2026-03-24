@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
+import { attachmentConfig } from "@/lib/attachment-config";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -45,6 +46,20 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   // 10MB limit
   if (file.size > 10 * 1024 * 1024) {
     return NextResponse.json({ error: "File must be under 10MB" }, { status: 400 });
+  }
+
+  // Cardinality check
+  const config = attachmentConfig[category];
+  if (config) {
+    const count = await prisma.attachment.count({
+      where: { snailId: parseInt(id), category },
+    });
+    if (count >= config.maxCount) {
+      return NextResponse.json(
+        { error: `Maximum ${config.maxCount} ${config.label} file(s) allowed` },
+        { status: 400 }
+      );
+    }
   }
 
   const blob = await put(`snails/${id}/${category}/${file.name}`, file, {

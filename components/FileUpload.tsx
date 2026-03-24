@@ -17,6 +17,7 @@ type Props = {
   snailId: number;
   category: string;
   label: string;
+  maxCount?: number;
   attachments: AttachmentData[];
   onUpload: (attachment: AttachmentData) => void;
   onDelete: (attachmentId: number) => void;
@@ -32,10 +33,12 @@ export default function FileUpload({
   snailId,
   category,
   label,
+  maxCount,
   attachments,
   onUpload,
   onDelete,
 }: Props) {
+  const limitReached = maxCount !== undefined && attachments.length >= maxCount;
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
@@ -81,7 +84,14 @@ export default function FileUpload({
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-gray-700 mb-2">{label}</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-gray-700">{label}</h3>
+        {maxCount !== undefined && (
+          <span className="text-xs text-gray-400">
+            {attachments.length} of {maxCount}
+          </span>
+        )}
+      </div>
 
       {/* Existing attachments */}
       {attachments.length > 0 && (
@@ -133,7 +143,7 @@ export default function FileUpload({
       )}
 
       {/* Upload zone */}
-      <div
+      {!limitReached && <div
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -175,7 +185,7 @@ export default function FileUpload({
             </span>
           </p>
         )}
-      </div>
+      </div>}
 
       {error && (
         <p className="text-sm text-red-600 mt-2">{error}</p>
