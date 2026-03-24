@@ -85,9 +85,7 @@ model Snail {
   zip     String?
 
   // SFUSA national mapping
-  onSfusaMap    Boolean @default(false) @map("on_sfusa_map")
-  sfusaCategory String? @map("sfusa_category")
-  sfusaSubtype  String? @map("sfusa_subtype")
+  onSfusaMap Boolean @default(false) @map("on_sfusa_map")
 
   // Transitional (to be removed once SFUSA categories fully adopted)
   establishmentType String? @map("establishment_type")

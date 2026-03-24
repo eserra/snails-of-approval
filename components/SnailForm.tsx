@@ -60,8 +60,7 @@ type SnailData = {
   borough: string;
   zip: string;
   onSfusaMap: boolean;
-  sfusaCategory: string;
-  sfusaSubtype: string;
+
   establishmentType: string;
   assigneeId: string;
   lastTouchDate: string;
@@ -100,8 +99,7 @@ const emptySnail: SnailData = {
   borough: "",
   zip: "",
   onSfusaMap: false,
-  sfusaCategory: "",
-  sfusaSubtype: "",
+
   establishmentType: "",
   assigneeId: "",
   lastTouchDate: "",
@@ -227,18 +225,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
           </div>
 
           <div>
-            <label className={labelClass}>Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => update("status", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
-          </div>
-
-          <div>
             <label className={labelClass}>Chapter *</label>
             <select
               required
@@ -280,6 +266,15 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
                   );
                 })}
             </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Establishment Type<br /><span className="text-gray-400 font-normal text-xs">DEPRECATED (SFNYC Legacy)</span></label>
+            <input
+              value={form.establishmentType}
+              onChange={(e) => update("establishmentType", e.target.value)}
+              className={`${inputClass} text-gray-400`}
+            />
           </div>
 
           <div className="sm:col-span-2">
@@ -548,11 +543,23 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
         </div>
       </div>
 
-      {/* SFUSA Mapping */}
+      {/* Map & Visibility */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">SFUSA Mapping</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Map & Visibility</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2 flex items-center gap-2">
+          <div>
+            <label className={labelClass}>SFNYC Map Status</label>
+            <select
+              value={form.status}
+              onChange={(e) => update("status", e.target.value)}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="draft">Draft (hidden)</option>
+              <option value="published">Published (visible)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 self-end pb-2">
             <input
               type="checkbox"
               checked={form.onSfusaMap}
@@ -563,45 +570,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             <label htmlFor="onSfusaMap" className="text-sm text-gray-700">
               On SFUSA Map
             </label>
-          </div>
-
-          <div>
-            <label className={labelClass}>SFUSA Category</label>
-            <select
-              value={form.sfusaCategory}
-              onChange={(e) => update("sfusaCategory", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              <option value="Food Service">Food Service</option>
-              <option value="Maker">Maker</option>
-            </select>
-          </div>
-
-          <div>
-            <label className={labelClass}>SFUSA Sub-type</label>
-            <select
-              value={form.sfusaSubtype}
-              onChange={(e) => update("sfusaSubtype", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              <option value="Restaurant">Restaurant</option>
-              <option value="Bar">Bar</option>
-              <option value="Brewery">Brewery</option>
-              <option value="Caterer">Caterer</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className={labelClass}>Establishment Type (NYC)</label>
-            <input
-              value={form.establishmentType}
-              onChange={(e) => update("establishmentType", e.target.value)}
-              placeholder="Transitional — will be migrated to SFUSA categories"
-              className={inputClass}
-            />
           </div>
         </div>
       </div>

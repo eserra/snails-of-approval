@@ -76,8 +76,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       borough: body.borough || null,
       zip: body.zip || null,
       onSfusaMap: body.onSfusaMap || false,
-      sfusaCategory: body.sfusaCategory || null,
-      sfusaSubtype: body.sfusaSubtype || null,
+
       establishmentType: body.establishmentType || null,
       assigneeId: body.assigneeId ? parseInt(body.assigneeId) : null,
       lastTouchDate: body.lastTouchDate ? new Date(body.lastTouchDate) : null,

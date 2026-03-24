@@ -40,8 +40,7 @@ export default function EditSnailPage() {
           borough: data.borough || "",
           zip: data.zip || "",
           onSfusaMap: data.onSfusaMap || false,
-          sfusaCategory: data.sfusaCategory || "",
-          sfusaSubtype: data.sfusaSubtype || "",
+
           establishmentType: data.establishmentType || "",
           assigneeId: data.assigneeId ? String(data.assigneeId) : "",
           lastTouchDate: data.lastTouchDate

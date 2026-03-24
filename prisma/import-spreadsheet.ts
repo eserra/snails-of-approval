@@ -103,7 +103,6 @@ async function main() {
     const email = str(row["Contact Email"]);
     const website = str(row["Website"]);
     const instagramUrl = str(row["Instagram"]);
-    const sfusaCategory = str(row["SFUSA Category"]);
     const sfusaSubtype = str(row["SFUSA Sub-type"]);
     const description = str(row["Blurb"]);
     const diversityTags = str(row["Diversity / Ownership"]);
@@ -161,8 +160,6 @@ async function main() {
       borough,
       zip,
       onSfusaMap,
-      sfusaCategory,
-      sfusaSubtype,
       establishmentType,
       assigneeId: assignee?.id || null,
       lastTouchDate,
