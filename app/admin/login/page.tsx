@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import SnailIcon from "@/components/SnailIcon";
 
 function LoginForm() {
   const router = useRouter();
@@ -35,6 +36,9 @@ function LoginForm() {
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+          <div className="flex justify-center mb-4 text-amber-700">
+            <SnailIcon size={48} />
+          </div>
           <h1 className="text-xl font-bold text-gray-900 mb-1 text-center">
             Admin Login
           </h1>

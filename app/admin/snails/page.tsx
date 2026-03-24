@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import SnailIcon from "@/components/SnailIcon";
 
 type Snail = {
   id: number;
@@ -134,6 +135,9 @@ export default function AdminSnailsPage() {
         <p className="text-gray-500">Loading...</p>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="flex justify-center mb-4 text-gray-300">
+            <SnailIcon size={48} />
+          </div>
           <p className="text-gray-500">
             {tab === "mine"
               ? "No snails assigned to you."

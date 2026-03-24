@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import SnailIcon from "./SnailIcon";
 
 export default function Header() {
   const pathname = usePathname();
@@ -18,7 +19,8 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-xl font-bold text-amber-700">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold text-amber-700">
+            <SnailIcon size={28} />
             Snails of Approval
           </Link>
 
