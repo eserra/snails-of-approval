@@ -215,16 +215,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
           </div>
 
           <div>
-            <label className={labelClass}>Year Awarded</label>
-            <input
-              type="number"
-              value={form.yearAwarded}
-              onChange={(e) => update("yearAwarded", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
             <label className={labelClass}>Chapter *</label>
             <select
               required
@@ -376,6 +366,16 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
               <option value="Confirmed - In Business">Confirmed - In Business</option>
               <option value="TBC">TBC</option>
             </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Year (First) Awarded</label>
+            <input
+              type="number"
+              value={form.yearAwarded}
+              onChange={(e) => update("yearAwarded", e.target.value)}
+              className={inputClass}
+            />
           </div>
 
           <div>
