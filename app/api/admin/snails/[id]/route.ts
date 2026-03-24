@@ -17,6 +17,10 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
         orderBy: { createdAt: "desc" },
         include: { author: { select: { name: true } } },
       },
+      attachments: {
+        orderBy: { createdAt: "desc" },
+        include: { uploadedBy: { select: { name: true } } },
+      },
     },
   });
   if (!snail) {

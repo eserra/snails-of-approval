@@ -51,6 +51,7 @@ export default function EditSnailPage() {
           stickersDelivered: data.stickersDelivered || false,
           diversityTags: data.diversityTags || "",
           notes: data.notes || [],
+          attachments: data.attachments || [],
         });
         setLoading(false);
       });

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
+import FileUpload from "./FileUpload";
+import { validateStageChange } from "@/lib/stage-requirements";
 
 type Chapter = { id: number; name: string };
 type Category = {
@@ -17,6 +19,16 @@ type NoteData = {
   content: string;
   createdAt: string;
   author: { name: string };
+};
+type AttachmentData = {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  category: string;
+  createdAt: string;
+  uploadedBy: { name: string };
 };
 
 type SnailData = {
@@ -56,8 +68,9 @@ type SnailData = {
   welcomeLetterSent: boolean;
   stickersDelivered: boolean;
   diversityTags: string;
-  // Notes (read-only, for display)
+  // Notes and attachments (read-only, for display)
   notes?: NoteData[];
+  attachments?: AttachmentData[];
 };
 
 const emptySnail: SnailData = {
@@ -112,6 +125,12 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notes, setNotes] = useState<NoteData[]>(snail?.notes || []);
+  const [attachments, setAttachments] = useState<AttachmentData[]>(
+    snail?.attachments || []
+  );
+  const [stageWarnings, setStageWarnings] = useState<
+    { label: string; met: boolean }[]
+  >([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const isEdit = !!snail?.id;
@@ -304,7 +323,16 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             <label className={labelClass}>Stage</label>
             <select
               value={form.stage}
-              onChange={(e) => update("stage", e.target.value)}
+              onChange={(e) => {
+                const newStage = e.target.value;
+                update("stage", newStage);
+                const warnings = validateStageChange(newStage, {
+                  attachments: attachments.map((a) => ({
+                    category: a.category,
+                  })),
+                });
+                setStageWarnings(warnings);
+              }}
               className={`${inputClass} bg-white`}
             >
               {form.track === "lead" ? (
@@ -645,6 +673,57 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
           </div>
         </div>
       </div>
+
+      {/* Stage warnings */}
+      {stageWarnings.length > 0 && stageWarnings.some((w) => !w.met) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-medium text-amber-800 mb-2">
+            Missing requirements for this stage:
+          </p>
+          <ul className="space-y-1">
+            {stageWarnings
+              .filter((w) => !w.met)
+              .map((w) => (
+                <li
+                  key={w.label}
+                  className="text-sm text-amber-700 flex items-center gap-2"
+                >
+                  <span className="text-amber-400">&#x26A0;</span>
+                  {w.label}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Attachments (only show on edit) */}
+      {isEdit && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+          <h2 className="text-sm font-semibold text-gray-900">Attachments</h2>
+          <FileUpload
+            snailId={snail!.id!}
+            category="application"
+            label="Application"
+            attachments={attachments.filter((a) => a.category === "application")}
+            onUpload={(a) => setAttachments((prev) => [a, ...prev])}
+            onDelete={(id) =>
+              setAttachments((prev) => prev.filter((a) => a.id !== id))
+            }
+          />
+          <FileUpload
+            snailId={snail!.id!}
+            category="site-visit-report"
+            label="Site Visit Report"
+            attachments={attachments.filter(
+              (a) => a.category === "site-visit-report"
+            )}
+            onUpload={(a) => setAttachments((prev) => [a, ...prev])}
+            onDelete={(id) =>
+              setAttachments((prev) => prev.filter((a) => a.id !== id))
+            }
+          />
+        </div>
+      )}
 
       {/* Notes (only show on edit) */}
       {isEdit && (

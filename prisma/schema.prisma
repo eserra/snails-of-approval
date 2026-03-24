@@ -15,9 +15,10 @@ model User {
   role         String   @default("editor") // admin, editor, viewer
   createdAt    DateTime @default(now()) @map("created_at")
 
-  snails         Snail[]
-  assignedSnails Snail[] @relation("assignedSnails")
-  authoredNotes  Note[]  @relation("authoredNotes")
+  snails              Snail[]
+  assignedSnails      Snail[]      @relation("assignedSnails")
+  authoredNotes       Note[]       @relation("authoredNotes")
+  uploadedAttachments Attachment[] @relation("uploadedAttachments")
 
   @@map("users")
 }
@@ -107,6 +108,7 @@ model Snail {
   createdBy   User?     @relation(fields: [createdById], references: [id])
   assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
   notes       Note[]
+  attachments Attachment[]
 
   @@map("snails")
 }
@@ -122,4 +124,21 @@ model Note {
   author   User  @relation("authoredNotes", fields: [authorId], references: [id])
 
   @@map("notes")
+}
+
+model Attachment {
+  id        Int      @id @default(autoincrement())
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  fileType  String   @map("file_type")
+  fileSize  Int      @map("file_size")
+  category  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snailId      Int   @map("snail_id")
+  snail        Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
+  uploadedById Int   @map("uploaded_by_id")
+  uploadedBy   User  @relation("uploadedAttachments", fields: [uploadedById], references: [id])
+
+  @@map("attachments")
 }
