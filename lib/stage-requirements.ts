@@ -30,6 +30,18 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
   ],
 };
 
+/** Ordered pipeline stages per track (excluding side-track states like Blocked/Lapsed) */
+export const pipelineStages: Record<string, string[]> = {
+  lead: [
+    "New",
+    "Contacted",
+    "Application Filled",
+    "Site Visit Completed",
+    "Up for Vote",
+  ],
+  active: ["Onboarding", "Active", "Renewal Due", "Renewal Submitted"],
+};
+
 export function validateStageChange(
   newStage: string,
   snail: {

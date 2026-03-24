@@ -1,8 +1,17 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import SnailIcon from "@/components/SnailIcon";
+import LeadsFunnel from "@/components/LeadsFunnel";
+
+type DashboardStats = {
+  activeCount: number;
+  lapsedCount: number;
+  blockedCount: number;
+  leadFunnel: { stage: string; count: number }[];
+};
 
 const quickLinks = [
   {
@@ -27,6 +36,14 @@ const quickLinks = [
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/dashboard/stats")
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(console.error);
+  }, []);
 
   return (
     <div>
@@ -36,6 +53,67 @@ export default function AdminDashboard() {
           Welcome back, {session?.user?.name || "Admin"}.
         </p>
       </div>
+
+      {/* Summary stat cards */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-sm text-gray-500">Active Snails</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 tabular-nums">
+            {stats?.activeCount ?? "—"}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-sm text-gray-500">Lapsed</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 tabular-nums">
+            {stats?.lapsedCount ?? "—"}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 rounded-lg bg-red-50 text-red-500 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <span className="text-sm text-gray-500">Blocked</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 tabular-nums">
+            {stats?.blockedCount ?? "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* Leads pipeline funnel */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">
+          Leads Pipeline
+        </h2>
+        {stats ? (
+          <LeadsFunnel stages={stats.leadFunnel} />
+        ) : (
+          <div className="h-48 flex items-center justify-center">
+            <span className="text-sm text-gray-400">Loading...</span>
+          </div>
+        )}
+      </div>
+
+      {/* Quick links */}
       <div className="grid gap-4 sm:grid-cols-3">
         {quickLinks.map((link) => (
           <Link
