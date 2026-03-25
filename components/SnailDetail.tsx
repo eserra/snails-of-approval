@@ -297,7 +297,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const diversitySlugs = parseDiversityTags(snail.diversityTags as string | null);
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-3">
       <PipelineProgress
         track={snail.track}
         currentStage={snail.stage || ""}
@@ -312,7 +312,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         snailId={snail.id}
         EditForm={(props) => <InfoEditForm {...props} snail={snail} chapters={chapters} categories={categories} />}
       >
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Name" value={snail.name} />
           <Field label="Chapter" value={snail.chapter.name} />
           <Field label="Category" value={snail.category ? `${snail.category.parent?.name || ""} > ${snail.category.name}`.replace(/^ > /, "") : null} />
@@ -324,7 +324,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* Pipeline */}
       <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
           <Field label="Stage" value={snail.stage} />
           {snail.stage === "Blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
@@ -333,7 +333,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* History */}
       <DetailSection title="History" snailId={snail.id} EditForm={(props) => <HistoryEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
           <Field label="Source" value={snail.source as string} />
           <Field label="Business Status" value={snail.businessStatus as string} />
@@ -342,7 +342,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* Contact & Links */}
       <DetailSection title="Contact & Links" snailId={snail.id} EditForm={(props) => <ContactEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Contact" value={snail.contactName as string} />
           <Field label="Email" value={snail.email ? <a href={`mailto:${snail.email}`} className="text-amber-700 hover:text-amber-800">{snail.email as string}</a> : null} />
           <Field label="Phone" value={snail.phone as string} />
@@ -352,7 +352,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* Location */}
       <DetailSection title="Location" snailId={snail.id} EditForm={(props) => <LocationEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Address" value={snail.address as string} />
           <Field label="Borough" value={snail.borough as string} />
           <Field label="ZIP" value={snail.zip as string} />
@@ -362,7 +362,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* Map & Visibility */}
       <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="SFNYC Map" value={<span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${snail.status === "published" ? "bg-green-50 text-green-700 ring-1 ring-green-600/20" : "bg-gray-100 text-gray-600"}`}>{snail.status === "published" ? "Published" : "Draft"}</span>} />
           <Field label="SFUSA Map" value={snail.onSfusaMap ? "Yes" : "No"} />
         </dl>
@@ -370,7 +370,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
 
       {/* Tracking */}
       <DetailSection title="Tracking" snailId={snail.id} EditForm={(props) => <TrackingEditForm {...props} snail={snail} users={users} />}>
-        <dl className="grid gap-3 sm:grid-cols-2">
+        <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Assignee" value={snail.assignee?.name} />
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
           <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
@@ -380,7 +380,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </DetailSection>
 
       {/* Attachments */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Attachments</h2>
         {Object.entries(attachmentConfig).map(([category, config]) => (
           <FileUpload key={category} snailId={snail.id} category={category} label={config.label} maxCount={config.maxCount} attachments={attachments.filter((a) => a.category === category)} onUpload={(a) => setAttachments((prev) => [a, ...prev])} onDelete={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))} />
@@ -388,7 +388,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </div>
 
       {/* Notes */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Notes</h2>
         <div className="flex gap-2">
           <textarea rows={2} value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a note..." className={`${inputClass} flex-1`} />

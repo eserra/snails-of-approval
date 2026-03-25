@@ -21,7 +21,7 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
   Applied: [
     { type: "attachment", category: "application", label: "Application PDF" },
   ],
-  Voted: [
+  Visited: [
     {
       type: "attachment",
       category: "site-visit-report",

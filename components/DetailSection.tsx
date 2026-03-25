@@ -45,8 +45,8 @@ export default function DetailSection({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
         {!editing && (
           <button

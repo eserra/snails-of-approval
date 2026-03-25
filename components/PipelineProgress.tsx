@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   pipelineStages,
   stageCTAHints,
@@ -23,6 +24,8 @@ export default function PipelineProgress({
   snailId,
   onStageChange,
 }: PipelineProgressProps) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [advancing, setAdvancing] = useState(false);
 
   const stages = pipelineStages[track];
@@ -74,7 +77,8 @@ export default function PipelineProgress({
             (r) => r.label
           );
 
-          const canClick = isNext && snailId && !advancing;
+          const blockedByReqs = !isAdmin && hasUnmetReqs;
+          const canClick = isNext && snailId && !advancing && !blockedByReqs;
           const Tag = canClick ? "button" : "div";
 
           return (
@@ -96,7 +100,7 @@ export default function PipelineProgress({
                 ${
                   isCompleted || isCurrent
                     ? "bg-amber-700 text-white"
-                    : isNext
+                    : isNext && canClick
                       ? "bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200 transition-colors"
                       : "bg-gray-50 text-gray-400"
                 }
