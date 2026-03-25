@@ -35,55 +35,75 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const body = await request.json();
 
-  // Re-geocode if address changed and no manual coordinates
-  let latitude = body.latitude ? parseFloat(body.latitude) : null;
-  let longitude = body.longitude ? parseFloat(body.longitude) : null;
-  if (body.address && !latitude && !longitude) {
-    const coords = await geocodeAddress(body.address);
-    if (coords) {
-      latitude = coords.latitude;
-      longitude = coords.longitude;
+  // Build data object with only the fields present in the request
+  const data: Record<string, unknown> = {};
+
+  // Helper: only set a field if it was sent in the body
+  function set(key: string, value: unknown) {
+    if (key in body) data[key] = value;
+  }
+
+  set("name", body.name);
+  set("description", body.description || null);
+  set("address", body.address || null);
+  set("email", body.email || null);
+  set("phone", body.phone || null);
+  set("website", body.website || null);
+  set("facebookUrl", body.facebookUrl || null);
+  set("instagramUrl", body.instagramUrl || null);
+  set("photoUrl", body.photoUrl || null);
+  set("status", body.status || "draft");
+  set("establishmentType", body.establishmentType || null);
+  set("contactName", body.contactName || null);
+  set("borough", body.borough || null);
+  set("zip", body.zip || null);
+  set("diversityTags", body.diversityTags || null);
+  set("source", body.source || null);
+  set("blockedReason", body.blockedReason || null);
+  set("businessStatus", body.businessStatus || null);
+  set("track", body.track || "lead");
+  set("stage", body.stage || null);
+
+  if ("yearAwarded" in body)
+    data.yearAwarded = body.yearAwarded ? parseInt(body.yearAwarded) : null;
+  if ("renewalDueYear" in body)
+    data.renewalDueYear = body.renewalDueYear
+      ? parseInt(body.renewalDueYear)
+      : null;
+  if ("categoryId" in body)
+    data.categoryId = body.categoryId ? parseInt(body.categoryId) : null;
+  if ("chapterId" in body) data.chapterId = parseInt(body.chapterId);
+  if ("assigneeId" in body)
+    data.assigneeId = body.assigneeId ? parseInt(body.assigneeId) : null;
+  if ("formerAwardee" in body) data.formerAwardee = body.formerAwardee || false;
+  if ("onSfusaMap" in body) data.onSfusaMap = body.onSfusaMap || false;
+  if ("welcomeLetterSent" in body)
+    data.welcomeLetterSent = body.welcomeLetterSent || false;
+  if ("stickersDelivered" in body)
+    data.stickersDelivered = body.stickersDelivered || false;
+  if ("lastTouchDate" in body)
+    data.lastTouchDate = body.lastTouchDate
+      ? new Date(body.lastTouchDate)
+      : null;
+
+  // Geocode if address changed and no manual coordinates
+  if ("address" in body) {
+    let latitude = body.latitude ? parseFloat(body.latitude) : null;
+    let longitude = body.longitude ? parseFloat(body.longitude) : null;
+    if (body.address && !latitude && !longitude) {
+      const coords = await geocodeAddress(body.address);
+      if (coords) {
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+      }
     }
+    data.latitude = latitude;
+    data.longitude = longitude;
   }
 
   const snail = await prisma.snail.update({
     where: { id: parseInt(id) },
-    data: {
-      name: body.name,
-      yearAwarded: body.yearAwarded ? parseInt(body.yearAwarded) : null,
-      description: body.description || null,
-      address: body.address || null,
-      latitude,
-      longitude,
-      email: body.email || null,
-      phone: body.phone || null,
-      website: body.website || null,
-      facebookUrl: body.facebookUrl || null,
-      instagramUrl: body.instagramUrl || null,
-      photoUrl: body.photoUrl || null,
-      status: body.status || "draft",
-      categoryId: body.categoryId ? parseInt(body.categoryId) : null,
-      chapterId: parseInt(body.chapterId),
-      // CRM fields
-      track: body.track || "lead",
-      stage: body.stage || null,
-      formerAwardee: body.formerAwardee || false,
-      renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
-      businessStatus: body.businessStatus || null,
-      source: body.source || null,
-      blockedReason: body.blockedReason || null,
-      contactName: body.contactName || null,
-      borough: body.borough || null,
-      zip: body.zip || null,
-      onSfusaMap: body.onSfusaMap || false,
-
-      establishmentType: body.establishmentType || null,
-      assigneeId: body.assigneeId ? parseInt(body.assigneeId) : null,
-      lastTouchDate: body.lastTouchDate ? new Date(body.lastTouchDate) : null,
-      welcomeLetterSent: body.welcomeLetterSent || false,
-      stickersDelivered: body.stickersDelivered || false,
-      diversityTags: body.diversityTags || null,
-    },
+    data,
   });
 
   return NextResponse.json(snail);
