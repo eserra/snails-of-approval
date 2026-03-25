@@ -2,22 +2,24 @@
 
 import { useState } from "react";
 
+export type EditFormProps = {
+  onSave: (fields: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+  saving: boolean;
+};
+
 type Props = {
   title: string;
   snailId: number;
   children: React.ReactNode;
-  editForm: (props: {
-    onSave: (fields: Record<string, unknown>) => Promise<void>;
-    onCancel: () => void;
-    saving: boolean;
-  }) => React.ReactNode;
+  EditForm: React.ComponentType<EditFormProps>;
 };
 
 export default function DetailSection({
   title,
   snailId,
   children,
-  editForm,
+  EditForm,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,7 +41,6 @@ export default function DetailSection({
     }
     setSaving(false);
     setEditing(false);
-    // Trigger a page refresh to get updated data
     window.location.reload();
   }
 
@@ -77,16 +78,18 @@ export default function DetailSection({
         </p>
       )}
 
-      {editing
-        ? editForm({
-            onSave: handleSave,
-            onCancel: () => {
-              setEditing(false);
-              setError("");
-            },
-            saving,
-          })
-        : children}
+      {editing ? (
+        <EditForm
+          onSave={handleSave}
+          onCancel={() => {
+            setEditing(false);
+            setError("");
+          }}
+          saving={saving}
+        />
+      ) : (
+        children
+      )}
     </div>
   );
 }
