@@ -20,7 +20,7 @@ type Snail = {
   assignee: { name: string } | null;
 };
 
-type Tab = "all" | "active" | "leads" | "lapsed" | "mine";
+type Tab = "leads" | "active" | "lapsed" | "all";
 
 const stageBadge: Record<string, string> = {
   New: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
@@ -36,7 +36,7 @@ const stageBadge: Record<string, string> = {
   Blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
 };
 
-function matchesTab(snail: Snail, tab: Tab, userId: string | undefined) {
+function matchesTab(snail: Snail, tab: Tab) {
   switch (tab) {
     case "active":
       return snail.track === "active";
@@ -44,8 +44,6 @@ function matchesTab(snail: Snail, tab: Tab, userId: string | undefined) {
       return snail.track === "lead" && snail.stage !== "Lapsed";
     case "lapsed":
       return snail.track === "lead" && snail.formerAwardee && snail.stage === "Lapsed";
-    case "mine":
-      return userId && String(snail.assigneeId) === userId;
     default:
       return true;
   }
@@ -55,7 +53,8 @@ export default function AdminSnailsPage() {
   const { data: session } = useSession();
   const [snails, setSnails] = useState<Snail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("all");
+  const [tab, setTab] = useState<Tab>("leads");
+  const [mineOnly, setMineOnly] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/snails")
@@ -67,18 +66,17 @@ export default function AdminSnailsPage() {
   }, []);
 
   const userId = session?.user?.id;
-  const filtered = snails.filter((s) => matchesTab(s, tab, userId));
+  const filtered = snails
+    .filter((s) => matchesTab(s, tab))
+    .filter((s) => !mineOnly || (userId && String(s.assigneeId) === userId));
 
   const counts = {
-    all: snails.length,
-    active: snails.filter((s) => s.track === "active").length,
     leads: snails.filter((s) => s.track === "lead" && s.stage !== "Lapsed").length,
+    active: snails.filter((s) => s.track === "active").length,
     lapsed: snails.filter(
       (s) => s.track === "lead" && s.formerAwardee && s.stage === "Lapsed"
     ).length,
-    mine: snails.filter(
-      (s) => userId && String(s.assigneeId) === userId
-    ).length,
+    all: snails.length,
   };
 
   async function handleDelete(id: number, name: string) {
@@ -88,11 +86,10 @@ export default function AdminSnailsPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "active", label: "Active" },
     { key: "leads", label: "Leads" },
+    { key: "active", label: "Active" },
     { key: "lapsed", label: "Lapsed" },
-    { key: "mine", label: "My Snails" },
+    { key: "all", label: "All" },
   ];
 
   return (
@@ -107,8 +104,9 @@ export default function AdminSnailsPage() {
         </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+      {/* Tabs + My Snails toggle */}
+      <div className="flex items-center gap-4 mb-6">
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -131,6 +129,17 @@ export default function AdminSnailsPage() {
         ))}
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={mineOnly}
+          onChange={(e) => setMineOnly(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500"
+        />
+        My snails only
+      </label>
+      </div>
+
       {loading ? (
         <p className="text-gray-500">Loading...</p>
       ) : filtered.length === 0 ? (
@@ -139,8 +148,8 @@ export default function AdminSnailsPage() {
             <SnailIcon size={48} />
           </div>
           <p className="text-gray-500">
-            {tab === "mine"
-              ? "No snails assigned to you."
+            {mineOnly
+              ? "No snails assigned to you in this view."
               : tab === "all"
                 ? "No snails yet. Create your first one!"
                 : `No ${tab} snails.`}
