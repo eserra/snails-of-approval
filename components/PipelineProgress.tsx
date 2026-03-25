@@ -43,6 +43,7 @@ export default function PipelineProgress({
 
   async function handleAdvance(targetStage: string) {
     if (!snailId) return;
+    if (!confirm(`Advance to "${targetStage}"?`)) return;
     setAdvancing(true);
     const res = await fetch(`/api/admin/snails/${snailId}/advance`, {
       method: "POST",
