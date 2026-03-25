@@ -58,7 +58,7 @@ export default function PipelineProgress({
   return (
     <div className="space-y-3">
       {/* Arrow step bar */}
-      <div className="flex items-stretch" role="list" aria-label="Pipeline stages">
+      <div className="flex items-stretch rounded-lg overflow-hidden border border-gray-200" role="list" aria-label="Pipeline stages">
         {stages.map((stage, i) => {
           const isCompleted = activeIndex >= 0 && i < activeIndex;
           const isCurrent = i === activeIndex;
@@ -89,16 +89,17 @@ export default function PipelineProgress({
                     : stage
               }
               className={`
-                relative flex items-center justify-center gap-1.5 px-3 py-2.5
-                text-xs font-medium flex-1 min-w-0 first:rounded-l-lg last:rounded-r-lg
+                flex items-center justify-center gap-1.5 px-3 py-2.5
+                text-xs font-medium flex-1 min-w-0
+                ${i > 0 ? "border-l border-white/30" : ""}
                 ${
                   isCompleted
                     ? "bg-amber-700 text-white"
                     : isCurrent
-                      ? "bg-amber-50 text-amber-800 ring-2 ring-inset ring-amber-700"
+                      ? "bg-amber-50 text-amber-800 font-semibold"
                       : isNext
                         ? "bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200 transition-colors"
-                        : "bg-gray-100 text-gray-400"
+                        : "bg-gray-50 text-gray-400"
                 }
               `}
               role="listitem"
@@ -123,19 +124,7 @@ export default function PipelineProgress({
               <span className="truncate">{stage}</span>
               {isNext && !advancing && (
                 <svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              )}
-              {i < stages.length - 1 && (
-                <svg
-                  className={`absolute -right-2 top-0 h-full w-4 z-10 ${
-                    isCompleted ? "text-amber-700" : isCurrent ? "text-amber-50" : isNext ? "text-amber-100" : "text-gray-100"
-                  }`}
-                  viewBox="0 0 16 40"
-                  preserveAspectRatio="none"
-                  fill="currentColor"
-                >
-                  <path d="M0 0 L12 20 L0 40 L0 0" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               )}
             </Tag>
