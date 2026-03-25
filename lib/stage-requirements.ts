@@ -18,10 +18,10 @@ export type StageWarning = {
 };
 
 export const stageRequirements: Record<string, StageRequirement[]> = {
-  "Application Filled": [
+  Applied: [
     { type: "attachment", category: "application", label: "Application PDF" },
   ],
-  "Up for Vote": [
+  Voted: [
     {
       type: "attachment",
       category: "site-visit-report",
@@ -32,13 +32,7 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
 
 /** Ordered pipeline stages per track (excluding side-track states like Blocked/Lapsed) */
 export const pipelineStages: Record<string, string[]> = {
-  lead: [
-    "New",
-    "Contacted",
-    "Application Filled",
-    "Site Visit Completed",
-    "Up for Vote",
-  ],
+  lead: ["New", "Contacted", "Applied", "Visited", "Voted"],
   active: ["Onboarding", "Active", "Renewal Due", "Renewal Submitted"],
 };
 
@@ -46,9 +40,9 @@ export const pipelineStages: Record<string, string[]> = {
 export const stageCTAHints: Record<string, string> = {
   New: "Reach out to this lead",
   Contacted: "Send or collect the application form",
-  "Application Filled": "Schedule a site visit",
-  "Site Visit Completed": "Submit for committee vote",
-  "Up for Vote": "Waiting for vote results",
+  Applied: "Schedule a site visit",
+  Visited: "Submit for committee vote",
+  Voted: "Waiting for vote results",
   Onboarding: "Send welcome letter and stickers",
   Active: "Monitor until renewal is due",
   "Renewal Due": "Request renewal submission",

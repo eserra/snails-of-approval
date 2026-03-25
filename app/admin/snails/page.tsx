@@ -25,9 +25,9 @@ type Tab = "all" | "active" | "leads" | "lapsed" | "mine";
 const stageBadge: Record<string, string> = {
   New: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
   Contacted: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
-  "Application Filled": "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
-  "Site Visit Completed": "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20",
-  "Up for Vote": "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
+  Applied: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+  Visited: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20",
+  Voted: "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
   Onboarding: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-600/20",
   Active: "bg-green-50 text-green-700 ring-1 ring-green-600/20",
   "Renewal Due": "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",

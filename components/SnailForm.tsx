@@ -6,6 +6,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
 import { attachmentConfig } from "@/lib/attachment-config";
+import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import PipelineProgress from "./PipelineProgress";
 
 type Chapter = { id: number; name: string };
@@ -280,12 +281,32 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
 
           <div className="sm:col-span-2">
             <label className={labelClass}>Diversity / Ownership</label>
-            <input
-              value={form.diversityTags}
-              onChange={(e) => update("diversityTags", e.target.value)}
-              placeholder="e.g., Woman, BIPOC, LGBTQIA2S+"
-              className={inputClass}
-            />
+            <div className="flex flex-wrap gap-3 mt-1">
+              {diversityTags.map((tag) => {
+                const selected = parseDiversityTags(form.diversityTags);
+                const isChecked = selected.includes(tag.slug);
+                return (
+                  <label
+                    key={tag.slug}
+                    className="flex items-center gap-1.5 text-sm text-gray-700"
+                    title={tag.description}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...selected, tag.slug]
+                          : selected.filter((s) => s !== tag.slug);
+                        update("diversityTags", serializeDiversityTags(next) || "");
+                      }}
+                      className={checkboxClass}
+                    />
+                    {tag.label}
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div className="sm:col-span-2">
@@ -347,9 +368,9 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
                   <option value="Lapsed">Lapsed</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
-                  <option value="Application Filled">Application Filled</option>
-                  <option value="Site Visit Completed">Site Visit Completed</option>
-                  <option value="Up for Vote">Up for Vote</option>
+                  <option value="Applied">Applied</option>
+                  <option value="Visited">Visited</option>
+                  <option value="Voted">Voted</option>
                   <option value="Blocked">Blocked</option>
                 </>
               ) : (

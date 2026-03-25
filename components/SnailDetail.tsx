@@ -142,7 +142,7 @@ function CRMEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snai
     source: (snail.source as string) || "",
     blockedReason: (snail.blockedReason as string) || "",
   });
-  const leadStages = ["Lapsed", "New", "Contacted", "Application Filled", "Site Visit Completed", "Up for Vote", "Blocked"];
+  const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Blocked"];
   const activeStages = ["Onboarding", "Active", "Renewal Due", "Renewal Submitted", "Blocked"];
   return (
     <div className="space-y-4">
