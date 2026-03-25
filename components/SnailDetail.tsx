@@ -131,15 +131,10 @@ function InfoEditForm({ onSave, onCancel, saving, snail, chapters, categories }:
   );
 }
 
-function CRMEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
+function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
     track: snail.track,
     stage: snail.stage || "",
-    formerAwardee: snail.formerAwardee,
-    yearAwarded: snail.yearAwarded != null ? String(snail.yearAwarded) : "",
-    renewalDueYear: snail.renewalDueYear != null ? String(snail.renewalDueYear) : "",
-    businessStatus: (snail.businessStatus as string) || "",
-    source: (snail.source as string) || "",
     blockedReason: (snail.blockedReason as string) || "",
   });
   const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Blocked"];
@@ -149,12 +144,27 @@ function CRMEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snai
       <div className="grid gap-4 sm:grid-cols-2">
         <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "New" : "Onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
         <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{s}</option>))}</select></div>
+        {f.stage === "Blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
+      </div>
+      <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
+function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
+  const [f, setF] = useState({
+    formerAwardee: snail.formerAwardee,
+    yearAwarded: snail.yearAwarded != null ? String(snail.yearAwarded) : "",
+    source: (snail.source as string) || "",
+    businessStatus: (snail.businessStatus as string) || "",
+  });
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.formerAwardee} onChange={(e) => setF({ ...f, formerAwardee: e.target.checked })} className={checkboxClass} id="fa-edit" /><label htmlFor="fa-edit" className="text-sm text-gray-700">Former Awardee</label></div>
-        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Confirmed - In Business">Confirmed - In Business</option><option value="TBC">TBC</option></select></div>
         {f.formerAwardee && <div><label className={labelClass}>Year (First) Awarded</label><input type="number" value={f.yearAwarded} onChange={(e) => setF({ ...f, yearAwarded: e.target.value })} className={inputClass} /></div>}
-        <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Source</label><input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} className={inputClass} /></div>
-        {f.stage === "Blocked" && <div><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
+        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Confirmed - In Business">Confirmed - In Business</option><option value="TBC">TBC</option></select></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
@@ -227,6 +237,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
   const [f, setF] = useState({
     assigneeId: snail.assigneeId ? String(snail.assigneeId) : "",
     lastTouchDate: snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toISOString().split("T")[0] : "",
+    renewalDueYear: snail.renewalDueYear != null ? String(snail.renewalDueYear) : "",
     welcomeLetterSent: snail.welcomeLetterSent as boolean,
     stickersDelivered: snail.stickersDelivered as boolean,
   });
@@ -235,6 +246,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
       <div className="grid gap-4 sm:grid-cols-2">
         <div><label className={labelClass}>Assignee</label><select value={f.assigneeId} onChange={(e) => setF({ ...f, assigneeId: e.target.value })} className={`${inputClass} bg-white`}><option value="">Unassigned</option>{users.map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}</select></div>
         <div><label className={labelClass}>Last Touch Date</label><input type="date" value={f.lastTouchDate} onChange={(e) => setF({ ...f, lastTouchDate: e.target.value })} className={inputClass} /></div>
+        <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.welcomeLetterSent} onChange={(e) => setF({ ...f, welcomeLetterSent: e.target.checked })} className={checkboxClass} id="wl-edit" /><label htmlFor="wl-edit" className="text-sm text-gray-700">Welcome Letter Sent</label></div>
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.stickersDelivered} onChange={(e) => setF({ ...f, stickersDelivered: e.target.checked })} className={checkboxClass} id="sd-edit" /><label htmlFor="sd-edit" className="text-sm text-gray-700">Stickers Delivered</label></div>
       </div>
@@ -310,15 +322,21 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         </dl>
       </DetailSection>
 
-      {/* CRM Status */}
-      <DetailSection title="CRM Status" snailId={snail.id} EditForm={(props) => <CRMEditForm {...props} snail={snail} />}>
+      {/* Pipeline */}
+      <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
         <dl className="grid gap-3 sm:grid-cols-2">
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
           <Field label="Stage" value={snail.stage} />
+          {snail.stage === "Blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
+        </dl>
+      </DetailSection>
+
+      {/* History */}
+      <DetailSection title="History" snailId={snail.id} EditForm={(props) => <HistoryEditForm {...props} snail={snail} />}>
+        <dl className="grid gap-3 sm:grid-cols-2">
           {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
-          <Field label="Business Status" value={snail.businessStatus as string} />
-          <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
           <Field label="Source" value={snail.source as string} />
+          <Field label="Business Status" value={snail.businessStatus as string} />
         </dl>
       </DetailSection>
 
@@ -355,6 +373,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         <dl className="grid gap-3 sm:grid-cols-2">
           <Field label="Assignee" value={snail.assignee?.name} />
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
+          <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
           <Field label="Welcome Letter" value={(snail.welcomeLetterSent as boolean) ? "Sent" : "Not sent"} />
           <Field label="Stickers" value={(snail.stickersDelivered as boolean) ? "Delivered" : "Not delivered"} />
         </dl>

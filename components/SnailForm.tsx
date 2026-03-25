@@ -117,9 +117,22 @@ const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 const checkboxClass =
   "h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500";
 
-export default function SnailForm({ snail }: { snail?: SnailData }) {
+export default function SnailForm({
+  snail,
+  userRole,
+  userId,
+}: {
+  snail?: SnailData;
+  userRole?: string;
+  userId?: string;
+}) {
   const router = useRouter();
-  const [form, setForm] = useState<SnailData>(snail || emptySnail);
+  const isAdmin = userRole === "admin";
+  const defaults = snail || {
+    ...emptySnail,
+    assigneeId: userId || "",
+  };
+  const [form, setForm] = useState<SnailData>(defaults);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -321,10 +334,9 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
         </div>
       </div>
 
-      {/* CRM Pipeline */}
+      {/* Pipeline */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">CRM Status</h2>
-
+        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Track</label>
@@ -333,7 +345,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
               onChange={(e) => {
                 const newTrack = e.target.value;
                 update("track", newTrack);
-                // Reset stage to appropriate default when track changes
                 if (newTrack === "lead") {
                   update("stage", form.formerAwardee ? "Lapsed" : "New");
                 } else {
@@ -343,7 +354,7 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
               className={`${inputClass} bg-white`}
             >
               <option value="lead">Lead</option>
-              <option value="active">Active</option>
+              {isAdmin && <option value="active">Active</option>}
             </select>
           </div>
 
@@ -355,24 +366,29 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
                 const newStage = e.target.value;
                 update("stage", newStage);
                 const warnings = validateStageChange(newStage, {
-                  attachments: attachments.map((a) => ({
-                    category: a.category,
-                  })),
+                  attachments: attachments.map((a) => ({ category: a.category })),
                 });
                 setStageWarnings(warnings);
               }}
               className={`${inputClass} bg-white`}
             >
               {form.track === "lead" ? (
-                <>
-                  <option value="Lapsed">Lapsed</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Applied">Applied</option>
-                  <option value="Visited">Visited</option>
-                  <option value="Voted">Voted</option>
-                  <option value="Blocked">Blocked</option>
-                </>
+                isAdmin ? (
+                  <>
+                    <option value="Lapsed">Lapsed</option>
+                    <option value="New">New</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Applied">Applied</option>
+                    <option value="Visited">Visited</option>
+                    <option value="Voted">Voted</option>
+                    <option value="Blocked">Blocked</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="New">New</option>
+                    <option value="Applied">Applied</option>
+                  </>
+                )
               ) : (
                 <>
                   <option value="Onboarding">Onboarding</option>
@@ -385,6 +401,23 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             </select>
           </div>
 
+          {form.stage === "Blocked" && (
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Blocked/Rejected Reason</label>
+              <input
+                value={form.blockedReason}
+                onChange={(e) => update("blockedReason", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* History */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-900">History</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -396,19 +429,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             <label htmlFor="formerAwardee" className="text-sm text-gray-700">
               Former Awardee
             </label>
-          </div>
-
-          <div>
-            <label className={labelClass}>Business Status</label>
-            <select
-              value={form.businessStatus}
-              onChange={(e) => update("businessStatus", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              <option value="Confirmed - In Business">Confirmed - In Business</option>
-              <option value="TBC">TBC</option>
-            </select>
           </div>
 
           {form.formerAwardee && (
@@ -424,16 +444,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
           )}
 
           <div>
-            <label className={labelClass}>Renewal Due Year</label>
-            <input
-              type="number"
-              value={form.renewalDueYear}
-              onChange={(e) => update("renewalDueYear", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
             <label className={labelClass}>Source</label>
             <input
               value={form.source}
@@ -442,16 +452,18 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             />
           </div>
 
-          {form.stage === "Blocked" && (
-            <div>
-              <label className={labelClass}>Blocked/Rejected Reason</label>
-              <input
-                value={form.blockedReason}
-                onChange={(e) => update("blockedReason", e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          )}
+          <div>
+            <label className={labelClass}>Business Status</label>
+            <select
+              value={form.businessStatus}
+              onChange={(e) => update("businessStatus", e.target.value)}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="">Select...</option>
+              <option value="Confirmed - In Business">Confirmed - In Business</option>
+              <option value="TBC">TBC</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -649,32 +661,45 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div>
+            <label className={labelClass}>Renewal Due Year</label>
             <input
-              type="checkbox"
-              checked={form.welcomeLetterSent}
-              onChange={(e) => update("welcomeLetterSent", e.target.checked)}
-              className={checkboxClass}
-              id="welcomeLetterSent"
+              type="number"
+              value={form.renewalDueYear}
+              onChange={(e) => update("renewalDueYear", e.target.value)}
+              className={inputClass}
             />
-            <label htmlFor="welcomeLetterSent" className="text-sm text-gray-700">
-              Welcome Letter Sent
-            </label>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.stickersDelivered}
-              onChange={(e) => update("stickersDelivered", e.target.checked)}
-              className={checkboxClass}
-              id="stickersDelivered"
-            />
-            <label htmlFor="stickersDelivered" className="text-sm text-gray-700">
-              SOA Stickers Delivered
-            </label>
-          </div>
+          {isEdit && (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.welcomeLetterSent}
+                  onChange={(e) => update("welcomeLetterSent", e.target.checked)}
+                  className={checkboxClass}
+                  id="welcomeLetterSent"
+                />
+                <label htmlFor="welcomeLetterSent" className="text-sm text-gray-700">
+                  Welcome Letter Sent
+                </label>
+              </div>
 
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.stickersDelivered}
+                  onChange={(e) => update("stickersDelivered", e.target.checked)}
+                  className={checkboxClass}
+                  id="stickersDelivered"
+                />
+                <label htmlFor="stickersDelivered" className="text-sm text-gray-700">
+                  SOA Stickers Delivered
+                </label>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
