@@ -11,14 +11,12 @@ type PipelineProgressProps = {
   track: string;
   currentStage: string;
   attachments?: { category: string }[];
-  onStageClick?: (stage: string) => void;
 };
 
 export default function PipelineProgress({
   track,
   currentStage,
   attachments = [],
-  onStageClick,
 }: PipelineProgressProps) {
   const stages = pipelineStages[track];
   if (!stages) return null;
@@ -51,10 +49,8 @@ export default function PipelineProgress({
           );
 
           return (
-            <button
+            <div
               key={stage}
-              type="button"
-              onClick={() => onStageClick?.(stage)}
               title={
                 isFuture && reqLabels.length > 0
                   ? `Requires: ${reqLabels.join(", ")}`
@@ -62,7 +58,7 @@ export default function PipelineProgress({
               }
               className={`
                 relative flex items-center justify-center gap-1.5 px-3 py-2.5
-                text-xs font-medium transition-colors flex-1 min-w-0 first:rounded-l-lg last:rounded-r-lg
+                text-xs font-medium flex-1 min-w-0 first:rounded-l-lg last:rounded-r-lg
                 ${
                   isCompleted
                     ? "bg-amber-700 text-white"
@@ -70,7 +66,6 @@ export default function PipelineProgress({
                       ? "bg-amber-50 text-amber-800 ring-2 ring-inset ring-amber-700"
                       : "bg-gray-100 text-gray-400"
                 }
-                ${onStageClick ? "cursor-pointer hover:opacity-80" : "cursor-default"}
               `}
               role="listitem"
               aria-current={isCurrent ? "step" : undefined}
@@ -132,7 +127,7 @@ export default function PipelineProgress({
                   <path d="M0 0 L12 20 L0 40 L0 0" />
                 </svg>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

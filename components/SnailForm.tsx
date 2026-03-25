@@ -196,6 +196,13 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+      {/* Pipeline Progress */}
+      <PipelineProgress
+        track={form.track}
+        currentStage={form.stage}
+        attachments={attachments.map((a) => ({ category: a.category }))}
+      />
+
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
           {error}
@@ -284,19 +291,6 @@ export default function SnailForm({ snail }: { snail?: SnailData }) {
       {/* CRM Pipeline */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
         <h2 className="text-sm font-semibold text-gray-900">CRM Status</h2>
-
-        <PipelineProgress
-          track={form.track}
-          currentStage={form.stage}
-          attachments={attachments.map((a) => ({ category: a.category }))}
-          onStageClick={(stage) => {
-            update("stage", stage);
-            const warnings = validateStageChange(stage, {
-              attachments: attachments.map((a) => ({ category: a.category })),
-            });
-            setStageWarnings(warnings);
-          }}
-        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
