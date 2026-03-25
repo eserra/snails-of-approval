@@ -129,7 +129,7 @@ export default function PipelineProgress({
               {i < stages.length - 1 && (
                 <svg
                   className={`absolute -right-2 top-0 h-full w-4 z-10 ${
-                    isCompleted ? "text-amber-700" : isCurrent ? "text-amber-50" : "text-gray-100"
+                    isCompleted ? "text-amber-700" : isCurrent ? "text-amber-50" : isNext ? "text-amber-100" : "text-gray-100"
                   }`}
                   viewBox="0 0 16 40"
                   preserveAspectRatio="none"
