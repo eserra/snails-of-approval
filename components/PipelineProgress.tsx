@@ -93,28 +93,20 @@ export default function PipelineProgress({
                 text-xs font-medium flex-1 min-w-0
                 ${i > 0 ? "border-l border-white/30" : ""}
                 ${
-                  isCompleted
+                  isCompleted || isCurrent
                     ? "bg-amber-700 text-white"
-                    : isCurrent
-                      ? "bg-amber-50 text-amber-800 font-semibold"
-                      : isNext
-                        ? "bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200 transition-colors"
-                        : "bg-gray-50 text-gray-400"
+                    : isNext
+                      ? "bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200 transition-colors"
+                      : "bg-gray-50 text-gray-400"
                 }
               `}
               role="listitem"
               aria-current={isCurrent ? "step" : undefined}
             >
-              {isCompleted && (
+              {(isCompleted || isCurrent) && (
                 <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-              )}
-              {isCurrent && (
-                <span className="relative flex size-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-amber-600" />
-                </span>
               )}
               {isFuture && hasUnmetReqs && (
                 <svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
