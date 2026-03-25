@@ -54,8 +54,8 @@ export default function Map({ snails }: { snails: MapSnail[] }) {
       marker.bindPopup(
         `<div>
           <strong><a href="/snails/${snail.slug}">${snail.name}</a></strong>
-          <br/><span style="color:#666">${snail.category.name} &middot; ${snail.chapter.name}</span>
-          <br/><span style="color:#999">Awarded ${snail.yearAwarded}</span>
+          <br/><span style="color:#666">${snail.category?.name || ""} &middot; ${snail.chapter.name}</span>
+          ${snail.yearAwarded ? `<br/><span style="color:#999">Awarded ${snail.yearAwarded}</span>` : ""}
         </div>`
       );
       markers.addLayer(marker);
