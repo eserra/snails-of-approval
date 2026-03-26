@@ -105,7 +105,22 @@ async function main() {
     const instagramUrl = str(row["Instagram"]);
     const sfusaSubtype = str(row["SFUSA Sub-type"]);
     const description = str(row["Blurb"]);
-    const diversityTags = str(row["Diversity / Ownership"]);
+    const rawDiversity = str(row["Diversity / Ownership"]);
+    const labelToSlug: Record<string, string> = {
+      woman: "woman",
+      bipoc: "bipoc",
+      "lgbtqia2s+": "lgbtqia2s",
+      "person with disability": "person-with-disability",
+      veteran: "veteran",
+    };
+    const diversityTags = rawDiversity
+      ? JSON.stringify(
+          rawDiversity
+            .split(",")
+            .map((t) => labelToSlug[t.trim().toLowerCase()] || t.trim().toLowerCase())
+            .filter(Boolean)
+        )
+      : null;
     const blockedReason = str(row["Blocked / Rejected Reason"]);
     const notes = str(row["Notes"]);
     const address = str(row["Street Address"]);
