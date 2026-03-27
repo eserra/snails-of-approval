@@ -19,6 +19,7 @@ model User {
   assignedSnails      Snail[]      @relation("assignedSnails")
   authoredNotes       Note[]       @relation("authoredNotes")
   uploadedAttachments Attachment[] @relation("uploadedAttachments")
+  gmailAccount        GmailAccount?
 
   @@map("users")
 }
@@ -30,7 +31,8 @@ model Chapter {
   state     String
   createdAt DateTime @default(now()) @map("created_at")
 
-  snails Snail[]
+  snails       Snail[]
+  gmailAccount GmailAccount?
 
   @@map("chapters")
 }
@@ -107,6 +109,7 @@ model Snail {
   assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
   notes       Note[]
   attachments Attachment[]
+  emails      EmailCache[]
 
   @@map("snails")
 }
@@ -139,4 +142,47 @@ model Attachment {
   uploadedBy   User  @relation("uploadedAttachments", fields: [uploadedById], references: [id])
 
   @@map("attachments")
+}
+
+model GmailAccount {
+  id           Int      @id @default(autoincrement())
+  emailAddress String   @map("email_address")
+  accessToken  String   @db.Text @map("access_token")
+  refreshToken String   @db.Text @map("refresh_token")
+  tokenExpiry  DateTime @map("token_expiry")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  chapterId Int?     @unique @map("chapter_id")
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  userId    Int?     @unique @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emailCache EmailCache[]
+
+  @@map("gmail_accounts")
+}
+
+model EmailCache {
+  id             Int      @id @default(autoincrement())
+  gmailMessageId String   @map("gmail_message_id")
+  threadId       String   @map("thread_id")
+  subject        String?
+  fromAddress    String   @map("from_address")
+  toAddresses    String   @map("to_addresses")
+  snippet        String?  @db.Text
+  receivedAt     DateTime @map("received_at")
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  gmailAccountId Int          @map("gmail_account_id")
+  gmailAccount   GmailAccount @relation(fields: [gmailAccountId], references: [id], onDelete: Cascade)
+  snailId        Int?         @map("snail_id")
+  snail          Snail?       @relation(fields: [snailId], references: [id], onDelete: SetNull)
+
+  @@unique([gmailAccountId, gmailMessageId])
+  @@index([snailId])
+  @@index([gmailAccountId, receivedAt])
+  @@index([fromAddress])
+  @@map("email_cache")
 }

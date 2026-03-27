@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import GmailConnectionStatus from "@/components/gmail/GmailConnectionStatus";
 
 type Chapter = {
   id: number;
@@ -147,6 +148,7 @@ export default function AdminChaptersPage() {
                 <th className="px-5 py-3 text-left font-medium text-gray-500">Name</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-500">State</th>
                 <th className="px-5 py-3 text-left font-medium text-gray-500">Snails</th>
+                <th className="px-5 py-3 text-left font-medium text-gray-500">Gmail</th>
                 <th className="px-5 py-3 text-right font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -160,6 +162,9 @@ export default function AdminChaptersPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-600">{ch._count.snails}</td>
+                  <td className="px-5 py-3.5">
+                    <GmailConnectionStatus chapterId={ch.id} />
+                  </td>
                   <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={() => startEdit(ch)}

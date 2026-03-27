@@ -5,6 +5,8 @@ import PipelineProgress from "./PipelineProgress";
 import DetailSection, { type EditFormProps } from "./DetailSection";
 import FileUpload from "./FileUpload";
 import AddressAutocomplete from "./AddressAutocomplete";
+import EmailList from "./gmail/EmailList";
+import ComposeEmail from "./gmail/ComposeEmail";
 import { attachmentConfig } from "@/lib/attachment-config";
 import {
   diversityTags as diversityTagConfig,
@@ -81,7 +83,7 @@ function SaveCancel({ onSave, onCancel, saving }: { onSave: () => void; onCancel
 function InfoEditForm({ onSave, onCancel, saving, snail, chapters, categories }: EditFormProps & { snail: SnailData; chapters: Chapter[]; categories: Category[] }) {
   const [f, setF] = useState({
     name: snail.name,
-    chapterId: String(snail.chapterId),
+    chapterId: String(snail.chapterId as number),
     categoryId: snail.categoryId ? String(snail.categoryId) : "",
     establishmentType: (snail.establishmentType as string) || "",
     diversityTags: (snail.diversityTags as string) || "",
@@ -265,6 +267,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [attachments, setAttachments] = useState(snail.attachments);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -407,6 +411,37 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           </div>
         )}
       </div>
+
+      {/* Emails */}
+      {snail.email && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Emails</h2>
+            <button
+              type="button"
+              onClick={() => { setShowCompose(true); setSelectedThreadId(null); }}
+              className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+            >
+              + New Email
+            </button>
+          </div>
+          {showCompose && !selectedThreadId && (
+            <ComposeEmail
+              chapterId={snail.chapterId as number}
+              defaultTo={snail.email as string}
+              onSent={() => setShowCompose(false)}
+              onCancel={() => setShowCompose(false)}
+            />
+          )}
+          <EmailList
+            chapterId={snail.chapterId as number}
+            snailId={snail.id}
+            compact
+            onSelectThread={(threadId) => setSelectedThreadId(threadId)}
+            selectedThreadId={selectedThreadId || undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }
