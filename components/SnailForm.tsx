@@ -7,6 +7,7 @@ import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
 import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
+import { contactRoles } from "@/lib/contact-roles";
 import PipelineProgress from "./PipelineProgress";
 
 type Chapter = { id: number; name: string };
@@ -34,6 +35,14 @@ type AttachmentData = {
   uploadedBy: { name: string };
 };
 
+type ContactInput = {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  isPublic: boolean;
+};
+
 type SnailData = {
   id?: number;
   name: string;
@@ -42,8 +51,7 @@ type SnailData = {
   address: string;
   latitude: string;
   longitude: string;
-  email: string;
-  phone: string;
+  contacts: ContactInput[];
   website: string;
   facebookUrl: string;
   instagramUrl: string;
@@ -59,7 +67,6 @@ type SnailData = {
   businessStatus: string;
   source: string;
   blockedReason: string;
-  contactName: string;
   borough: string;
   zip: string;
   onSfusaMap: boolean;
@@ -82,8 +89,7 @@ const emptySnail: SnailData = {
   address: "",
   latitude: "",
   longitude: "",
-  email: "",
-  phone: "",
+  contacts: [],
   website: "",
   facebookUrl: "",
   instagramUrl: "",
@@ -98,7 +104,6 @@ const emptySnail: SnailData = {
   businessStatus: "",
   source: "",
   blockedReason: "",
-  contactName: "",
   borough: "",
   zip: "",
   onSfusaMap: false,
@@ -163,6 +168,32 @@ export default function SnailForm({
 
   function update(field: string, value: string | number | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function addContact() {
+    setForm((prev) => ({
+      ...prev,
+      contacts: [
+        ...prev.contacts,
+        { name: "", role: "general", email: "", phone: "", isPublic: false },
+      ],
+    }));
+  }
+
+  function updateContact(index: number, field: keyof ContactInput, value: string | boolean) {
+    setForm((prev) => ({
+      ...prev,
+      contacts: prev.contacts.map((c, i) =>
+        i === index ? { ...c, [field]: value } : c
+      ),
+    }));
+  }
+
+  function removeContact(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      contacts: prev.contacts.filter((_, i) => i !== index),
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -467,39 +498,94 @@ export default function SnailForm({
         </div>
       </div>
 
-      {/* Contact */}
+      {/* Contacts */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+          <button
+            type="button"
+            onClick={addContact}
+            className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+          >
+            + Add Contact
+          </button>
+        </div>
+
+        {form.contacts.length === 0 && (
+          <p className="text-sm text-gray-400">
+            No contacts yet. Add the people connected to this establishment.
+          </p>
+        )}
+
+        {form.contacts.map((contact, i) => (
+          <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Name *</label>
+                <input
+                  value={contact.name}
+                  onChange={(e) => updateContact(i, "name", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Role</label>
+                <select
+                  value={contact.role}
+                  onChange={(e) => updateContact(i, "role", e.target.value)}
+                  className={`${inputClass} bg-white`}
+                >
+                  {contactRoles.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Email</label>
+                <input
+                  type="email"
+                  value={contact.email}
+                  onChange={(e) => updateContact(i, "email", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Phone</label>
+                <input
+                  value={contact.phone}
+                  onChange={(e) => updateContact(i, "phone", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={contact.isPublic}
+                  onChange={(e) => updateContact(i, "isPublic", e.target.checked)}
+                  className={checkboxClass}
+                />
+                Show email/phone on public page
+              </label>
+              <button
+                type="button"
+                onClick={() => removeContact(i)}
+                className="text-red-600 hover:text-red-700 text-sm font-medium"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Links */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Contact & Links</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Links</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Contact Name</label>
-            <input
-              value={form.contactName}
-              onChange={(e) => update("contactName", e.target.value)}
-              placeholder="Person at the establishment"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => update("email", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Phone</label>
-            <input
-              value={form.phone}
-              onChange={(e) => update("phone", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
           <div className="sm:col-span-2">
             <label className={labelClass}>Website</label>
             <input

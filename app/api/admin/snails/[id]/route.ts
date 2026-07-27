@@ -13,6 +13,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
       chapter: { select: { name: true } },
       category: { select: { name: true } },
       assignee: { select: { id: true, name: true } },
+      contacts: { orderBy: { createdAt: "asc" } },
       notes: {
         orderBy: { createdAt: "desc" },
         include: { author: { select: { name: true } } },
@@ -46,15 +47,12 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("name", body.name);
   set("description", body.description || null);
   set("address", body.address || null);
-  set("email", body.email || null);
-  set("phone", body.phone || null);
   set("website", body.website || null);
   set("facebookUrl", body.facebookUrl || null);
   set("instagramUrl", body.instagramUrl || null);
   set("photoUrl", body.photoUrl || null);
   set("status", body.status || "draft");
   set("establishmentType", body.establishmentType || null);
-  set("contactName", body.contactName || null);
   set("borough", body.borough || null);
   set("zip", body.zip || null);
   set("diversityTags", body.diversityTags || null);

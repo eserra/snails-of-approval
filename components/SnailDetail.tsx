@@ -14,8 +14,18 @@ import {
   getDiversityLabel,
   serializeDiversityTags,
 } from "@/lib/diversity-tags";
+import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
 
 /* ── shared types ── */
+
+type ContactData = {
+  id: number;
+  name: string;
+  role: string;
+  email: string | null;
+  phone: string | null;
+  isPublic: boolean;
+};
 
 type SnailData = Record<string, unknown> & {
   id: number;
@@ -26,6 +36,7 @@ type SnailData = Record<string, unknown> & {
   chapter: { name: string };
   category: { name: string; parent: { name: string } | null } | null;
   assignee: { name: string } | null;
+  contacts: ContactData[];
   notes: {
     id: number;
     content: string;
@@ -173,11 +184,8 @@ function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
   );
 }
 
-function ContactEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
+function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
-    contactName: (snail.contactName as string) || "",
-    email: (snail.email as string) || "",
-    phone: (snail.phone as string) || "",
     website: (snail.website as string) || "",
     facebookUrl: (snail.facebookUrl as string) || "",
     instagramUrl: (snail.instagramUrl as string) || "",
@@ -185,14 +193,165 @@ function ContactEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={labelClass}>Contact Name</label><input value={f.contactName} onChange={(e) => setF({ ...f, contactName: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Email</label><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Phone</label><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputClass} /></div>
         <div className="sm:col-span-2"><label className={labelClass}>Website</label><input type="url" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Facebook</label><input type="url" value={f.facebookUrl} onChange={(e) => setF({ ...f, facebookUrl: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Instagram</label><input type="url" value={f.instagramUrl} onChange={(e) => setF({ ...f, instagramUrl: e.target.value })} className={inputClass} /></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
+/* ── contacts section (its own CRUD against /api/admin/snails/[id]/contacts) ── */
+
+const emptyContactForm = { name: "", role: "general", email: "", phone: "", isPublic: false };
+type ContactFormState = typeof emptyContactForm;
+
+function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactFormState) => void }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div><label className={labelClass}>Name *</label><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={inputClass} /></div>
+      <div>
+        <label className={labelClass}>Role</label>
+        <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} className={`${inputClass} bg-white`}>
+          {contactRoles.map((r) => (<option key={r.value} value={r.value}>{r.label}</option>))}
+        </select>
+      </div>
+      <div><label className={labelClass}>Email</label><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputClass} /></div>
+      <div><label className={labelClass}>Phone</label><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputClass} /></div>
+      <div className="sm:col-span-2 flex items-center gap-2">
+        <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} className={checkboxClass} id={`pub-${f.name}`} />
+        <label className="text-sm text-gray-700">Show email/phone on public page</label>
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ contact, snailId, onChange, onRemove }: {
+  contact: ContactData;
+  snailId: number;
+  onChange: (c: ContactData) => void;
+  onRemove: (id: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<ContactFormState>({
+    name: contact.name,
+    role: contact.role,
+    email: contact.email || "",
+    phone: contact.phone || "",
+    isPublic: contact.isPublic,
+  });
+
+  async function save() {
+    if (!f.name.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(f),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onChange(await res.json());
+      setEditing(false);
+    }
+  }
+
+  async function remove() {
+    if (!confirm(`Remove contact "${contact.name}"?`)) return;
+    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, { method: "DELETE" });
+    if (res.ok) onRemove(contact.id);
+  }
+
+  if (editing) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+        <ContactFields f={f} setF={setF} />
+        <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-gray-900">
+          {contact.name}
+          <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
+          {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
+        </p>
+        <p className="text-xs text-gray-600 mt-0.5">
+          {contact.email && <a href={`mailto:${contact.email}`} className="text-amber-700 hover:text-amber-800">{contact.email}</a>}
+          {contact.email && contact.phone && <span className="mx-1.5 text-gray-300">&middot;</span>}
+          {contact.phone && <span>{contact.phone}</span>}
+          {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
+        </p>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+        <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function ContactsSection({ snailId, initial }: { snailId: number; initial: ContactData[] }) {
+  const [contacts, setContacts] = useState<ContactData[]>(initial);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<ContactFormState>(emptyContactForm);
+
+  async function add() {
+    if (!f.name.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/contacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(f),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const created = await res.json();
+      setContacts((prev) => [...prev, created]);
+      setF(emptyContactForm);
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+        {!adding && (
+          <button type="button" onClick={() => setAdding(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">
+            + Add Contact
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+          <ContactFields f={f} setF={setF} />
+          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyContactForm); }} saving={saving} />
+        </div>
+      )}
+
+      {contacts.length === 0 && !adding ? (
+        <p className="text-sm text-gray-400">No contacts yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {contacts.map((c) => (
+            <ContactRow
+              key={c.id}
+              contact={c}
+              snailId={snailId}
+              onChange={(updated) => setContacts((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+              onRemove={(id) => setContacts((prev) => prev.filter((x) => x.id !== id))}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -299,6 +458,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   }
 
   const diversitySlugs = parseDiversityTags(snail.diversityTags as string | null);
+  const primaryContactEmail = snail.contacts.find((c) => c.email)?.email || "";
 
   return (
     <div className="max-w-2xl space-y-3">
@@ -344,13 +504,15 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         </dl>
       </DetailSection>
 
-      {/* Contact & Links */}
-      <DetailSection title="Contact & Links" snailId={snail.id} EditForm={(props) => <ContactEditForm {...props} snail={snail} />}>
+      {/* Contacts */}
+      <ContactsSection snailId={snail.id} initial={snail.contacts} />
+
+      {/* Links */}
+      <DetailSection title="Links" snailId={snail.id} EditForm={(props) => <LinksEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="Contact" value={snail.contactName as string} />
-          <Field label="Email" value={snail.email ? <a href={`mailto:${snail.email}`} className="text-amber-700 hover:text-amber-800">{snail.email as string}</a> : null} />
-          <Field label="Phone" value={snail.phone as string} />
           <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
         </dl>
       </DetailSection>
 
@@ -413,7 +575,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </div>
 
       {/* Emails */}
-      {snail.email && (
+      {primaryContactEmail && (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Emails</h2>
@@ -428,7 +590,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           {showCompose && !selectedThreadId && (
             <ComposeEmail
               chapterId={snail.chapterId as number}
-              defaultTo={snail.email as string}
+              defaultTo={primaryContactEmail}
               onSent={() => setShowCompose(false)}
               onCancel={() => setShowCompose(false)}
             />

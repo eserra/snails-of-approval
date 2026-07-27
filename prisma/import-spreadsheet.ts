@@ -160,7 +160,6 @@ async function main() {
       yearAwarded,
       description,
       address,
-      email,
       website,
       instagramUrl,
       status,
@@ -171,7 +170,6 @@ async function main() {
       businessStatus,
       source,
       blockedReason,
-      contactName,
       borough,
       zip,
       onSfusaMap,
@@ -196,6 +194,28 @@ async function main() {
       update: data,
       create: { slug, ...data },
     });
+
+    // Fold the spreadsheet's single contact into a "general" contact row.
+    // Re-run safe: only create if this snail has no general contact yet.
+    if (contactName || email) {
+      const snail = await prisma.snail.findUnique({ where: { slug } });
+      if (snail) {
+        const existingContact = await prisma.contact.findFirst({
+          where: { snailId: snail.id, role: "general" },
+        });
+        if (!existingContact) {
+          await prisma.contact.create({
+            data: {
+              name: contactName || name,
+              role: "general",
+              email,
+              isPublic: true,
+              snailId: snail.id,
+            },
+          });
+        }
+      }
+    }
 
     // Create a note if the Notes column has content
     if (notes) {

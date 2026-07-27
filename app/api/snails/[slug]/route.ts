@@ -12,6 +12,11 @@ export async function GET(
     include: {
       chapter: { select: { name: true, slug: true } },
       category: { select: { name: true, slug: true } },
+      contacts: {
+        where: { isPublic: true },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, role: true, email: true, phone: true },
+      },
     },
   });
 

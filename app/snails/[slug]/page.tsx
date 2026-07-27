@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { contactRoleLabel } from "@/lib/contact-roles";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -26,6 +27,11 @@ export default async function SnailDetailPage({ params }: Props) {
     include: {
       chapter: { select: { name: true, slug: true } },
       category: { select: { name: true, slug: true } },
+      contacts: {
+        where: { isPublic: true },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, role: true, email: true, phone: true },
+      },
     },
   });
 
@@ -70,28 +76,35 @@ export default async function SnailDetailPage({ params }: Props) {
           </p>
         )}
 
-        <div className="border-t border-gray-200 pt-4 space-y-2">
+        <div className="border-t border-gray-200 pt-4 space-y-3">
           {snail.address && (
             <p className="text-sm text-gray-600">
               <span className="font-medium">Address:</span> {snail.address}
             </p>
           )}
-          {snail.phone && (
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Phone:</span>{" "}
-              <a href={`tel:${snail.phone}`} className="text-amber-700">
-                {snail.phone}
-              </a>
-            </p>
-          )}
-          {snail.email && (
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Email:</span>{" "}
-              <a href={`mailto:${snail.email}`} className="text-amber-700">
-                {snail.email}
-              </a>
-            </p>
-          )}
+          {snail.contacts.map((contact) => (
+            <div key={contact.id} className="text-sm text-gray-600">
+              <p className="font-medium text-gray-900">
+                {contact.name}
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  {contactRoleLabel(contact.role)}
+                </span>
+              </p>
+              {contact.phone && (
+                <a href={`tel:${contact.phone}`} className="text-amber-700">
+                  {contact.phone}
+                </a>
+              )}
+              {contact.phone && contact.email && (
+                <span className="mx-2 text-gray-300">&middot;</span>
+              )}
+              {contact.email && (
+                <a href={`mailto:${contact.email}`} className="text-amber-700">
+                  {contact.email}
+                </a>
+              )}
+            </div>
+          ))}
         </div>
 
         {(snail.website || snail.facebookUrl || snail.instagramUrl) && (

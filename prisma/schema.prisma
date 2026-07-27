@@ -60,8 +60,6 @@ model Snail {
   address      String?
   latitude     Decimal? @db.Decimal(10, 7)
   longitude    Decimal? @db.Decimal(10, 7)
-  email        String?
-  phone        String?
   website      String?
   facebookUrl  String?  @map("facebook_url")
   instagramUrl String?  @map("instagram_url")
@@ -78,9 +76,6 @@ model Snail {
   businessStatus String? @map("business_status")
   source         String?
   blockedReason  String? @map("blocked_reason")
-
-  // Contact at the establishment
-  contactName String? @map("contact_name")
 
   // Geography
   borough String?
@@ -107,11 +102,29 @@ model Snail {
   createdById Int?      @map("created_by_id")
   createdBy   User?     @relation(fields: [createdById], references: [id])
   assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
+  contacts    Contact[]
   notes       Note[]
   attachments Attachment[]
   emails      EmailCache[]
 
   @@map("snails")
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  name      String
+  role      String   @default("general") // owner, manager, chef, pr_media, general
+  email     String?
+  phone     String?
+  isPublic  Boolean  @default(false) @map("is_public")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  snailId Int   @map("snail_id")
+  snail   Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
+
+  @@index([snailId])
+  @@map("contacts")
 }
 
 model Note {
