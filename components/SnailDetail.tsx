@@ -491,6 +491,21 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         onStageChange={() => window.location.reload()}
       />
 
+      <a
+        href={`/api/admin/snails/${snail.id}/sfusa-link`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:bg-amber-50 transition-colors"
+      >
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Submit to Slow Food USA</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Opens the SFUSA form prefilled with this snail&apos;s data
+          </p>
+        </div>
+        <span className="text-amber-700 text-sm font-medium shrink-0 ml-4">Open form &#8599;</span>
+      </a>
+
       {/* Info */}
       <DetailSection
         title="Info"
