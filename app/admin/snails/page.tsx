@@ -14,6 +14,7 @@ type Snail = {
   stage: string | null;
   formerAwardee: boolean;
   establishmentType: string | null;
+  onSfusaMap: boolean;
   assigneeId: number | null;
   chapter: { name: string };
   category: { name: string; parent: { name: string } | null } | null;
@@ -55,20 +56,49 @@ export default function AdminSnailsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("leads");
   const [mineOnly, setMineOnly] = useState(false);
+  const [notOnMapOnly, setNotOnMapOnly] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/admin/snails")
+  function loadSnails() {
+    return fetch("/api/admin/snails")
       .then((r) => r.json())
       .then((data) => {
         setSnails(data);
         setLoading(false);
       });
+  }
+
+  useEffect(() => {
+    loadSnails();
   }, []);
+
+  async function handleSyncMap() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/sfusa-map-sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setSyncResult(data.error || "Sync failed");
+      } else {
+        setSyncResult(
+          `${data.onMap} of ${data.checked} on the SFUSA map (${data.changed} updated).` +
+            (data.errors?.length ? ` Errors: ${data.errors.join("; ")}` : "")
+        );
+        await loadSnails();
+      }
+    } catch {
+      setSyncResult("Sync failed");
+    }
+    setSyncing(false);
+  }
 
   const userId = session?.user?.id;
   const filtered = snails
     .filter((s) => matchesTab(s, tab))
-    .filter((s) => !mineOnly || (userId && String(s.assigneeId) === userId));
+    .filter((s) => !mineOnly || (userId && String(s.assigneeId) === userId))
+    .filter((s) => !notOnMapOnly || !s.onSfusaMap);
 
   const counts = {
     leads: snails.filter((s) => s.track === "lead" && s.stage !== "Lapsed").length,
@@ -96,13 +126,29 @@ export default function AdminSnailsPage() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Snails</h1>
-        <Link
-          href="/admin/snails/new"
-          className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
-        >
-          + Add Snail
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncMap}
+            disabled={syncing}
+            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            title="Check each snail against the live Slow Food USA map"
+          >
+            {syncing ? "Syncing…" : "Sync SFUSA map"}
+          </button>
+          <Link
+            href="/admin/snails/new"
+            className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
+          >
+            + Add Snail
+          </Link>
+        </div>
       </div>
+
+      {syncResult && (
+        <p className="mb-4 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          {syncResult}
+        </p>
+      )}
 
       {/* Tabs + My Snails toggle */}
       <div className="flex items-center gap-4 mb-6">
@@ -137,6 +183,16 @@ export default function AdminSnailsPage() {
           className="h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500"
         />
         My snails only
+      </label>
+
+      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={notOnMapOnly}
+          onChange={(e) => setNotOnMapOnly(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500"
+        />
+        Not on SFUSA map
       </label>
       </div>
 
@@ -197,6 +253,11 @@ export default function AdminSnailsPage() {
                       {snail.formerAwardee && (
                         <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-600/20">
                           Former
+                        </span>
+                      )}
+                      {snail.onSfusaMap && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700 ring-1 ring-green-600/20">
+                          On map
                         </span>
                       )}
                     </td>
