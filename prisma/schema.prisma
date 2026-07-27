@@ -63,6 +63,7 @@ model Snail {
   website      String?
   facebookUrl  String?  @map("facebook_url")
   instagramUrl String?  @map("instagram_url")
+  otherSocial  String?  @map("other_social")
   photoUrl     String?  @map("photo_url")
   status       String   @default("draft") // draft, published
   createdAt    DateTime @default(now()) @map("created_at")
@@ -78,6 +79,8 @@ model Snail {
   blockedReason  String? @map("blocked_reason")
 
   // Geography
+  city    String?
+  state   String?
   borough String?
   zip     String?
 
@@ -112,12 +115,14 @@ model Snail {
 
 model Contact {
   id        Int      @id @default(autoincrement())
-  name      String
-  role      String   @default("general") // owner, manager, chef, pr_media, general
-  email     String?
-  phone     String?
-  isPublic  Boolean  @default(false) @map("is_public")
-  createdAt DateTime @default(now()) @map("created_at")
+  name        String
+  role        String   @default("general") // owner, manager, chef, pr_media, general
+  email       String?
+  phone       String?
+  phoneVanity String?  @map("phone_vanity")
+  isPublic    Boolean  @default(false) @map("is_public")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  createdAt   DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   snailId Int   @map("snail_id")

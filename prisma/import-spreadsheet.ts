@@ -210,6 +210,7 @@ async function main() {
               role: "general",
               email,
               isPublic: true,
+              isPrimary: true,
               snailId: snail.id,
             },
           });

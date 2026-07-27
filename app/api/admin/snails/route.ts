@@ -45,6 +45,36 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Build the inline contacts, enforcing at most one primary (keep the first flagged).
+  let primaryTaken = false;
+  const contactsCreate = Array.isArray(body.contacts)
+    ? body.contacts
+        .filter((c: { name?: string }) => c.name?.trim())
+        .map(
+          (c: {
+            name: string;
+            role?: string;
+            email?: string;
+            phone?: string;
+            phoneVanity?: string;
+            isPublic?: boolean;
+            isPrimary?: boolean;
+          }) => {
+            const isPrimary = !!c.isPrimary && !primaryTaken;
+            if (isPrimary) primaryTaken = true;
+            return {
+              name: c.name.trim(),
+              role: c.role || "general",
+              email: c.email || null,
+              phone: c.phone || null,
+              phoneVanity: c.phoneVanity || null,
+              isPublic: !!c.isPublic,
+              isPrimary,
+            };
+          }
+        )
+    : [];
+
   const snail = await prisma.snail.create({
     data: {
       slug,
@@ -57,6 +87,7 @@ export async function POST(request: NextRequest) {
       website: body.website || null,
       facebookUrl: body.facebookUrl || null,
       instagramUrl: body.instagramUrl || null,
+      otherSocial: body.otherSocial || null,
       photoUrl: body.photoUrl || null,
       status: body.status || "draft",
       categoryId: body.categoryId ? parseInt(body.categoryId) : null,
@@ -70,6 +101,8 @@ export async function POST(request: NextRequest) {
       businessStatus: body.businessStatus || null,
       source: body.source || null,
       blockedReason: body.blockedReason || null,
+      city: body.city || null,
+      state: body.state || null,
       borough: body.borough || null,
       zip: body.zip || null,
       onSfusaMap: body.onSfusaMap || false,
@@ -80,25 +113,7 @@ export async function POST(request: NextRequest) {
       welcomeLetterSent: body.welcomeLetterSent || false,
       stickersDelivered: body.stickersDelivered || false,
       diversityTags: body.diversityTags || null,
-      contacts: Array.isArray(body.contacts)
-        ? {
-            create: body.contacts
-              .filter((c: { name?: string }) => c.name?.trim())
-              .map((c: {
-                name: string;
-                role?: string;
-                email?: string;
-                phone?: string;
-                isPublic?: boolean;
-              }) => ({
-                name: c.name.trim(),
-                role: c.role || "general",
-                email: c.email || null,
-                phone: c.phone || null,
-                isPublic: !!c.isPublic,
-              })),
-          }
-        : undefined,
+      contacts: contactsCreate.length ? { create: contactsCreate } : undefined,
     },
     include: { contacts: { orderBy: { createdAt: "asc" } } },
   });

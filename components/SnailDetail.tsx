@@ -24,7 +24,9 @@ type ContactData = {
   role: string;
   email: string | null;
   phone: string | null;
+  phoneVanity: string | null;
   isPublic: boolean;
+  isPrimary: boolean;
 };
 
 type SnailData = Record<string, unknown> & {
@@ -189,6 +191,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
     website: (snail.website as string) || "",
     facebookUrl: (snail.facebookUrl as string) || "",
     instagramUrl: (snail.instagramUrl as string) || "",
+    otherSocial: (snail.otherSocial as string) || "",
   });
   return (
     <div className="space-y-4">
@@ -196,6 +199,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
         <div className="sm:col-span-2"><label className={labelClass}>Website</label><input type="url" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Facebook</label><input type="url" value={f.facebookUrl} onChange={(e) => setF({ ...f, facebookUrl: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Instagram</label><input type="url" value={f.instagramUrl} onChange={(e) => setF({ ...f, instagramUrl: e.target.value })} className={inputClass} /></div>
+        <div className="sm:col-span-2"><label className={labelClass}>Other Social Media</label><input value={f.otherSocial} onChange={(e) => setF({ ...f, otherSocial: e.target.value })} className={inputClass} /></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
@@ -204,7 +208,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
 
 /* ── contacts section (its own CRUD against /api/admin/snails/[id]/contacts) ── */
 
-const emptyContactForm = { name: "", role: "general", email: "", phone: "", isPublic: false };
+const emptyContactForm = { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false };
 type ContactFormState = typeof emptyContactForm;
 
 function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactFormState) => void }) {
@@ -219,9 +223,16 @@ function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactForm
       </div>
       <div><label className={labelClass}>Email</label><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputClass} /></div>
       <div><label className={labelClass}>Phone</label><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputClass} /></div>
-      <div className="sm:col-span-2 flex items-center gap-2">
-        <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} className={checkboxClass} id={`pub-${f.name}`} />
-        <label className="text-sm text-gray-700">Show email/phone on public page</label>
+      <div className="sm:col-span-2"><label className={labelClass}>Vanity phone <span className="text-gray-400 font-normal">(if the number spells something)</span></label><input value={f.phoneVanity} onChange={(e) => setF({ ...f, phoneVanity: e.target.value })} placeholder="e.g. 1-800-EAT-SLOW" className={inputClass} /></div>
+      <div className="sm:col-span-2 space-y-2">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPrimary} onChange={(e) => setF({ ...f, isPrimary: e.target.checked })} className={checkboxClass} />
+          Main contact (used for the business phone/email on submissions)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} className={checkboxClass} />
+          Show email/phone on public page
+        </label>
       </div>
     </div>
   );
@@ -240,7 +251,9 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
     role: contact.role,
     email: contact.email || "",
     phone: contact.phone || "",
+    phoneVanity: contact.phoneVanity || "",
     isPublic: contact.isPublic,
+    isPrimary: contact.isPrimary,
   });
 
   async function save() {
@@ -279,12 +292,13 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
         <p className="text-sm font-medium text-gray-900">
           {contact.name}
           <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
+          {contact.isPrimary && <span className="ml-2 text-xs font-normal text-amber-700">Main</span>}
           {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
         </p>
         <p className="text-xs text-gray-600 mt-0.5">
           {contact.email && <a href={`mailto:${contact.email}`} className="text-amber-700 hover:text-amber-800">{contact.email}</a>}
           {contact.email && contact.phone && <span className="mx-1.5 text-gray-300">&middot;</span>}
-          {contact.phone && <span>{contact.phone}</span>}
+          {contact.phone && <span>{contact.phone}{contact.phoneVanity ? ` (${contact.phoneVanity})` : ""}</span>}
           {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
         </p>
       </div>
@@ -359,6 +373,8 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
 function LocationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
     address: (snail.address as string) || "",
+    city: (snail.city as string) || "",
+    state: (snail.state as string) || "",
     borough: (snail.borough as string) || "",
     zip: (snail.zip as string) || "",
     latitude: snail.latitude ? String(snail.latitude) : "",
@@ -368,6 +384,8 @@ function LocationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><label className={labelClass}>Address</label><AddressAutocomplete value={f.address} onChange={(addr, lat, lon) => setF({ ...f, address: addr, ...(lat && lon ? { latitude: lat, longitude: lon } : {}) })} className={inputClass} placeholder="Start typing to search..." /></div>
+        <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
+        <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Borough</label><select value={f.borough} onChange={(e) => setF({ ...f, borough: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Manhattan">Manhattan</option><option value="Brooklyn">Brooklyn</option><option value="Queens">Queens</option><option value="The Bronx">The Bronx</option><option value="Staten Island">Staten Island</option><option value="Other">Other</option></select></div>
         <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} className={inputClass} /></div>
@@ -458,7 +476,10 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   }
 
   const diversitySlugs = parseDiversityTags(snail.diversityTags as string | null);
-  const primaryContactEmail = snail.contacts.find((c) => c.email)?.email || "";
+  const primaryContactEmail =
+    snail.contacts.find((c) => c.isPrimary && c.email)?.email ||
+    snail.contacts.find((c) => c.email)?.email ||
+    "";
 
   return (
     <div className="max-w-2xl space-y-3">
@@ -513,6 +534,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
           <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
           <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Other Social" value={snail.otherSocial as string} />
         </dl>
       </DetailSection>
 
@@ -520,6 +542,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       <DetailSection title="Location" snailId={snail.id} EditForm={(props) => <LocationEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Address" value={snail.address as string} />
+          <Field label="City" value={snail.city as string} />
+          <Field label="State" value={snail.state as string} />
           <Field label="Borough" value={snail.borough as string} />
           <Field label="ZIP" value={snail.zip as string} />
           {snail.latitude ? <Field label="Coordinates" value={`${snail.latitude}, ${snail.longitude}`} /> : null}

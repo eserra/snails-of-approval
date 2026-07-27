@@ -40,7 +40,9 @@ type ContactInput = {
   role: string;
   email: string;
   phone: string;
+  phoneVanity: string;
   isPublic: boolean;
+  isPrimary: boolean;
 };
 
 type SnailData = {
@@ -55,6 +57,7 @@ type SnailData = {
   website: string;
   facebookUrl: string;
   instagramUrl: string;
+  otherSocial: string;
   photoUrl: string;
   status: string;
   categoryId: string;
@@ -67,6 +70,8 @@ type SnailData = {
   businessStatus: string;
   source: string;
   blockedReason: string;
+  city: string;
+  state: string;
   borough: string;
   zip: string;
   onSfusaMap: boolean;
@@ -93,6 +98,7 @@ const emptySnail: SnailData = {
   website: "",
   facebookUrl: "",
   instagramUrl: "",
+  otherSocial: "",
   photoUrl: "",
   status: "draft",
   categoryId: "",
@@ -104,6 +110,8 @@ const emptySnail: SnailData = {
   businessStatus: "",
   source: "",
   blockedReason: "",
+  city: "",
+  state: "",
   borough: "",
   zip: "",
   onSfusaMap: false,
@@ -175,7 +183,7 @@ export default function SnailForm({
       ...prev,
       contacts: [
         ...prev.contacts,
-        { name: "", role: "general", email: "", phone: "", isPublic: false },
+        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false },
       ],
     }));
   }
@@ -559,21 +567,46 @@ export default function SnailForm({
                   className={inputClass}
                 />
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>
+                  Vanity phone{" "}
+                  <span className="text-gray-400 font-normal">
+                    (if the number spells something)
+                  </span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={contact.isPublic}
-                  onChange={(e) => updateContact(i, "isPublic", e.target.checked)}
-                  className={checkboxClass}
+                  value={contact.phoneVanity}
+                  onChange={(e) => updateContact(i, "phoneVanity", e.target.value)}
+                  placeholder="e.g. 1-800-EAT-SLOW"
+                  className={inputClass}
                 />
-                Show email/phone on public page
-              </label>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={contact.isPrimary}
+                    onChange={(e) => updateContact(i, "isPrimary", e.target.checked)}
+                    className={checkboxClass}
+                  />
+                  Main contact (business phone/email for submissions)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={contact.isPublic}
+                    onChange={(e) => updateContact(i, "isPublic", e.target.checked)}
+                    className={checkboxClass}
+                  />
+                  Show email/phone on public page
+                </label>
+              </div>
               <button
                 type="button"
                 onClick={() => removeContact(i)}
-                className="text-red-600 hover:text-red-700 text-sm font-medium"
+                className="text-red-600 hover:text-red-700 text-sm font-medium self-start"
               >
                 Remove
               </button>
@@ -615,6 +648,15 @@ export default function SnailForm({
               className={inputClass}
             />
           </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Other Social Media</label>
+            <input
+              value={form.otherSocial}
+              onChange={(e) => update("otherSocial", e.target.value)}
+              className={inputClass}
+            />
+          </div>
         </div>
       </div>
 
@@ -634,6 +676,24 @@ export default function SnailForm({
                 }
               }}
               placeholder="Start typing to search..."
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>City</label>
+            <input
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>State</label>
+            <input
+              value={form.state}
+              onChange={(e) => update("state", e.target.value)}
               className={inputClass}
             />
           </div>

@@ -23,15 +23,27 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
-  const contact = await prisma.contact.create({
-    data: {
-      name: body.name.trim(),
-      role: body.role || "general",
-      email: body.email || null,
-      phone: body.phone || null,
-      isPublic: !!body.isPublic,
-      snailId: parseInt(id),
-    },
+  const snailId = parseInt(id);
+  const contact = await prisma.$transaction(async (tx) => {
+    // A snail has at most one primary contact.
+    if (body.isPrimary) {
+      await tx.contact.updateMany({
+        where: { snailId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+    }
+    return tx.contact.create({
+      data: {
+        name: body.name.trim(),
+        role: body.role || "general",
+        email: body.email || null,
+        phone: body.phone || null,
+        phoneVanity: body.phoneVanity || null,
+        isPublic: !!body.isPublic,
+        isPrimary: !!body.isPrimary,
+        snailId,
+      },
+    });
   });
 
   return NextResponse.json(contact, { status: 201 });

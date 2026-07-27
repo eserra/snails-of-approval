@@ -50,9 +50,12 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("website", body.website || null);
   set("facebookUrl", body.facebookUrl || null);
   set("instagramUrl", body.instagramUrl || null);
+  set("otherSocial", body.otherSocial || null);
   set("photoUrl", body.photoUrl || null);
   set("status", body.status || "draft");
   set("establishmentType", body.establishmentType || null);
+  set("city", body.city || null);
+  set("state", body.state || null);
   set("borough", body.borough || null);
   set("zip", body.zip || null);
   set("diversityTags", body.diversityTags || null);
