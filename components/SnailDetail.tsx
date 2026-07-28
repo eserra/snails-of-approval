@@ -167,8 +167,9 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
     track: snail.track,
     stage: snail.stage || "",
     blockedReason: (snail.blockedReason as string) || "",
+    recommendation: (snail.recommendation as string) || "",
   });
-  const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Blocked"];
+  const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Deferred", "Blocked"];
   const activeStages = ["Onboarding", "Active", "Renewal Due", "Renewal Submitted", "Blocked"];
   return (
     <div className="space-y-4">
@@ -176,6 +177,7 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
         <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "New" : "Onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
         <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{s}</option>))}</select></div>
         {f.stage === "Blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
+        <div className="sm:col-span-2"><label className={labelClass}>SOA team recommendation (to the board)</label><textarea rows={3} value={f.recommendation} onChange={(e) => setF({ ...f, recommendation: e.target.value })} className={inputClass} placeholder="Summary and recommendation for the board vote" /></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
@@ -564,6 +566,23 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
           <Field label="Stage" value={snail.stage} />
           {snail.stage === "Blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
+          {snail.boardDecision ? (
+            <Field
+              label="Board decision"
+              value={
+                <span>
+                  <span className={`capitalize font-medium ${snail.boardDecision === "approved" ? "text-green-700" : "text-amber-700"}`}>{snail.boardDecision as string}</span>
+                  {snail.boardDecisionDate ? ` · ${new Date(snail.boardDecisionDate as string).toLocaleDateString()}` : ""}
+                </span>
+              }
+            />
+          ) : null}
+          {snail.recommendation ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs text-gray-500">Recommendation to board</dt>
+              <dd className="text-sm text-gray-900 mt-0.5 whitespace-pre-wrap">{snail.recommendation as string}</dd>
+            </div>
+          ) : null}
         </dl>
       </DetailSection>
 

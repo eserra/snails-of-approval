@@ -9,6 +9,7 @@ import LeadsFunnel from "@/components/LeadsFunnel";
 type DashboardStats = {
   activeCount: number;
   lapsedCount: number;
+  deferredCount: number;
   blockedCount: number;
   leadFunnel: { stage: string; count: number }[];
 };
@@ -55,7 +56,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Summary stat cards */}
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
@@ -81,6 +82,20 @@ export default function AdminDashboard() {
           </div>
           <p className="text-3xl font-bold text-gray-900 tabular-nums">
             {stats?.lapsedCount ?? "—"}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9.75h4.875a2.625 2.625 0 010 5.25H12M8.25 9.75L10.5 7.5M8.25 9.75L10.5 12m9-7.243V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185z" />
+              </svg>
+            </div>
+            <span className="text-sm text-gray-500">Deferred</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 tabular-nums">
+            {stats?.deferredCount ?? "—"}
           </p>
         </div>
 
