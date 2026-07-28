@@ -95,6 +95,11 @@ model Snail {
   lastTouchDate     DateTime? @map("last_touch_date")
   welcomeLetterSent Boolean   @default(false) @map("welcome_letter_sent")
   stickersDelivered Boolean   @default(false) @map("stickers_delivered")
+  digitalAssetsSent Boolean   @default(false) @map("digital_assets_sent")
+  certificateSent   Boolean   @default(false) @map("certificate_sent")
+  certificateRequestedDate DateTime? @map("certificate_requested_date")
+  pressReleaseSent  Boolean   @default(false) @map("press_release_sent")
+  socialAnnounced   Boolean   @default(false) @map("social_announced")
   diversityTags     String?   @map("diversity_tags")
 
   // Relations
