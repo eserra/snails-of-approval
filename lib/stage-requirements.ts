@@ -43,7 +43,7 @@ export const stageCTAHints: Record<string, string> = {
   Applied: "Schedule a site visit",
   Visited: "Submit for committee vote",
   Voted: "Waiting for vote results",
-  Onboarding: "Send welcome letter and stickers",
+  Onboarding: "Deliver the award package: stickers, digital assets, welcome letter, certificate",
   Active: "Monitor until renewal is due",
   "Renewal Due": "Request renewal submission",
   "Renewal Submitted": "Review renewal application",

@@ -82,6 +82,18 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     data.welcomeLetterSent = body.welcomeLetterSent || false;
   if ("stickersDelivered" in body)
     data.stickersDelivered = body.stickersDelivered || false;
+  if ("digitalAssetsSent" in body)
+    data.digitalAssetsSent = body.digitalAssetsSent || false;
+  if ("certificateSent" in body)
+    data.certificateSent = body.certificateSent || false;
+  if ("pressReleaseSent" in body)
+    data.pressReleaseSent = body.pressReleaseSent || false;
+  if ("socialAnnounced" in body)
+    data.socialAnnounced = body.socialAnnounced || false;
+  if ("certificateRequestedDate" in body)
+    data.certificateRequestedDate = body.certificateRequestedDate
+      ? new Date(body.certificateRequestedDate)
+      : null;
   if ("lastTouchDate" in body)
     data.lastTouchDate = body.lastTouchDate
       ? new Date(body.lastTouchDate)

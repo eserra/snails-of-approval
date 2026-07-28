@@ -78,6 +78,22 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function ChecklistItem({ done, label, hint }: { done: boolean; label: string; hint?: string }) {
+  return (
+    <li className="flex items-center gap-1.5 text-sm">
+      {done ? (
+        <svg className="size-4 shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      ) : (
+        <span className="size-4 shrink-0 rounded-full border border-gray-300" aria-hidden />
+      )}
+      <span className={done ? "text-gray-900" : "text-gray-400"}>{label}</span>
+      {hint && <span className="text-xs text-amber-600">({hint})</span>}
+    </li>
+  );
+}
+
 function SaveCancel({ onSave, onCancel, saving }: { onSave: () => void; onCancel: () => void; saving: boolean }) {
   return (
     <div className="flex gap-2 mt-4">
@@ -419,6 +435,11 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
     renewalDueYear: snail.renewalDueYear != null ? String(snail.renewalDueYear) : "",
     welcomeLetterSent: snail.welcomeLetterSent as boolean,
     stickersDelivered: snail.stickersDelivered as boolean,
+    digitalAssetsSent: snail.digitalAssetsSent as boolean,
+    certificateSent: snail.certificateSent as boolean,
+    certificateRequestedDate: snail.certificateRequestedDate ? new Date(snail.certificateRequestedDate as string).toISOString().split("T")[0] : "",
+    pressReleaseSent: snail.pressReleaseSent as boolean,
+    socialAnnounced: snail.socialAnnounced as boolean,
   });
   return (
     <div className="space-y-4">
@@ -426,9 +447,24 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
         <div><label className={labelClass}>Assignee</label><select value={f.assigneeId} onChange={(e) => setF({ ...f, assigneeId: e.target.value })} className={`${inputClass} bg-white`}><option value="">Unassigned</option>{users.map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}</select></div>
         <div><label className={labelClass}>Last Touch Date</label><input type="date" value={f.lastTouchDate} onChange={(e) => setF({ ...f, lastTouchDate: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
-        <div className="flex items-center gap-2"><input type="checkbox" checked={f.welcomeLetterSent} onChange={(e) => setF({ ...f, welcomeLetterSent: e.target.checked })} className={checkboxClass} id="wl-edit" /><label htmlFor="wl-edit" className="text-sm text-gray-700">Welcome Letter Sent</label></div>
-        <div className="flex items-center gap-2"><input type="checkbox" checked={f.stickersDelivered} onChange={(e) => setF({ ...f, stickersDelivered: e.target.checked })} className={checkboxClass} id="sd-edit" /><label htmlFor="sd-edit" className="text-sm text-gray-700">Stickers Delivered</label></div>
       </div>
+      <fieldset className="rounded-lg border border-gray-200 p-3">
+        <legend className="px-1 text-xs font-semibold text-gray-500">Award package</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.stickersDelivered} onChange={(e) => setF({ ...f, stickersDelivered: e.target.checked })} className={checkboxClass} id="sd-edit" /><label htmlFor="sd-edit" className="text-sm text-gray-700">Stickers delivered</label></div>
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.digitalAssetsSent} onChange={(e) => setF({ ...f, digitalAssetsSent: e.target.checked })} className={checkboxClass} id="da-edit" /><label htmlFor="da-edit" className="text-sm text-gray-700">Digital assets sent</label></div>
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.welcomeLetterSent} onChange={(e) => setF({ ...f, welcomeLetterSent: e.target.checked })} className={checkboxClass} id="wl-edit" /><label htmlFor="wl-edit" className="text-sm text-gray-700">Welcome letter sent</label></div>
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.certificateSent} onChange={(e) => setF({ ...f, certificateSent: e.target.checked })} className={checkboxClass} id="ct-edit" /><label htmlFor="ct-edit" className="text-sm text-gray-700">Certificate delivered</label></div>
+          <div className="sm:col-span-2"><label className={labelClass}>Certificate requested (allow ~1 week)</label><input type="date" value={f.certificateRequestedDate} onChange={(e) => setF({ ...f, certificateRequestedDate: e.target.value })} className={inputClass} /></div>
+        </div>
+      </fieldset>
+      <fieldset className="rounded-lg border border-gray-200 p-3">
+        <legend className="px-1 text-xs font-semibold text-gray-500">Announcement</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.pressReleaseSent} onChange={(e) => setF({ ...f, pressReleaseSent: e.target.checked })} className={checkboxClass} id="pr-edit" /><label htmlFor="pr-edit" className="text-sm text-gray-700">Press release sent</label></div>
+          <div className="flex items-center gap-2"><input type="checkbox" checked={f.socialAnnounced} onChange={(e) => setF({ ...f, socialAnnounced: e.target.checked })} className={checkboxClass} id="so-edit" /><label htmlFor="so-edit" className="text-sm text-gray-700">Announced on social</label></div>
+        </div>
+      </fieldset>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -579,9 +615,32 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <Field label="Assignee" value={snail.assignee?.name} />
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
           <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
-          <Field label="Welcome Letter" value={(snail.welcomeLetterSent as boolean) ? "Sent" : "Not sent"} />
-          <Field label="Stickers" value={(snail.stickersDelivered as boolean) ? "Delivered" : "Not delivered"} />
         </dl>
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500">Award package</span>
+            <span className="text-xs font-medium text-gray-400">
+              {[snail.welcomeLetterSent, snail.stickersDelivered, snail.digitalAssetsSent, snail.certificateSent].filter(Boolean).length}/4 complete
+            </span>
+          </div>
+          <ul className="grid gap-1 sm:grid-cols-2">
+            <ChecklistItem done={snail.stickersDelivered as boolean} label="Stickers delivered" />
+            <ChecklistItem done={snail.digitalAssetsSent as boolean} label="Digital assets sent" />
+            <ChecklistItem done={snail.welcomeLetterSent as boolean} label="Welcome letter sent" />
+            <ChecklistItem
+              done={snail.certificateSent as boolean}
+              label="Certificate delivered"
+              hint={!snail.certificateSent && snail.certificateRequestedDate ? `requested ${new Date(snail.certificateRequestedDate as string).toLocaleDateString()}` : undefined}
+            />
+          </ul>
+        </div>
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <span className="mb-1.5 block text-xs font-semibold text-gray-500">Announcement</span>
+          <ul className="grid gap-1 sm:grid-cols-2">
+            <ChecklistItem done={snail.pressReleaseSent as boolean} label="Press release sent" />
+            <ChecklistItem done={snail.socialAnnounced as boolean} label="Announced on social" />
+          </ul>
+        </div>
       </DetailSection>
 
       {/* Attachments */}
