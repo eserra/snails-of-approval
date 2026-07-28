@@ -42,7 +42,11 @@ function matchesTab(snail: Snail, tab: Tab) {
     case "active":
       return snail.track === "active";
     case "leads":
-      return snail.track === "lead" && snail.stage !== "Lapsed";
+      return (
+        snail.track === "lead" &&
+        snail.stage !== "Lapsed" &&
+        snail.stage !== "Deferred"
+      );
     case "lapsed":
       return snail.track === "lead" && snail.formerAwardee && snail.stage === "Lapsed";
     default:

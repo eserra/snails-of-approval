@@ -36,13 +36,17 @@ export const pipelineStages: Record<string, string[]> = {
   active: ["Onboarding", "Active", "Renewal Due", "Renewal Submitted"],
 };
 
+/** States that sit outside the ordered funnel (no linear "next" step) */
+export const sideTrackStages = ["Blocked", "Lapsed", "Deferred"];
+
 /** CTA hints encouraging the volunteer to advance the snail to the next stage */
 export const stageCTAHints: Record<string, string> = {
   New: "Reach out to this lead",
   Contacted: "Send or collect the application form",
   Applied: "Schedule a site visit",
   Visited: "Submit for committee vote",
-  Voted: "Waiting for vote results",
+  Voted: "Record the board's decision below",
+  Deferred: "Applicant may reapply when ready — reopen to continue",
   Onboarding: "Deliver the award package: stickers, digital assets, welcome letter, certificate",
   Active: "Monitor until renewal is due",
   "Renewal Due": "Request renewal submission",

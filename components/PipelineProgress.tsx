@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   pipelineStages,
+  sideTrackStages,
   stageCTAHints,
   stageRequirements,
   validateStageChange,
@@ -32,7 +33,9 @@ export default function PipelineProgress({
   if (!stages) return null;
 
   const currentIndex = stages.indexOf(currentStage);
-  const isSideTrack = currentStage === "Blocked" || currentStage === "Lapsed";
+  const isSideTrack = sideTrackStages.includes(currentStage);
+  const isVoted = currentStage === "Voted";
+  const isDeferred = currentStage === "Deferred";
   const activeIndex = isSideTrack ? -1 : currentIndex;
   const isLastStage = currentIndex === stages.length - 1;
 
@@ -57,6 +60,48 @@ export default function PipelineProgress({
     if (res.ok) {
       onStageChange?.();
     }
+  }
+
+  async function handleDecision(
+    outcome: "approved" | "rejected" | "reopen",
+    extra: Record<string, unknown> = {}
+  ) {
+    if (!snailId) return;
+    setAdvancing(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, ...extra }),
+    });
+    setAdvancing(false);
+    if (res.ok) {
+      onStageChange?.();
+    } else {
+      const e = await res.json().catch(() => ({}));
+      alert(e.error || "Something went wrong");
+    }
+  }
+
+  function onApprove() {
+    if (!confirm("Board approved — move to Onboarding as an active awardee?")) return;
+    handleDecision("approved");
+  }
+
+  function onReject() {
+    const reason = window.prompt(
+      "Board deferred. Add feedback / areas for improvement (shown in notes):"
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert("A reason is required.");
+      return;
+    }
+    handleDecision("rejected", { reason });
+  }
+
+  function onReopen() {
+    if (!confirm("Reopen this applicant back into the pipeline to reapply?")) return;
+    handleDecision("reopen");
   }
 
   return (
@@ -131,17 +176,62 @@ export default function PipelineProgress({
 
       {/* Side-track badge */}
       {isSideTrack && (
-        <div
-          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
-            currentStage === "Blocked"
-              ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-              : "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10"
-          }`}
-        >
-          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-          Currently {currentStage}
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
+              currentStage === "Blocked"
+                ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                : currentStage === "Deferred"
+                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20"
+                  : "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10"
+            }`}
+          >
+            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            Currently {currentStage}
+          </div>
+          {snailId && isDeferred && (
+            <button
+              type="button"
+              onClick={onReopen}
+              disabled={advancing}
+              className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-200 disabled:opacity-50 transition-colors"
+            >
+              Reopen to reapply
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Board decision fork (out of the "Voted" stage) */}
+      {snailId && isVoted && (
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+          <p className="text-xs font-semibold text-purple-800">Board decision</p>
+          <p className="mt-0.5 text-xs text-purple-700">
+            Record the board&apos;s vote. Approving moves this awardee to onboarding.
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onApprove}
+              disabled={advancing}
+              className="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Approve → Onboarding
+            </button>
+            <button
+              type="button"
+              onClick={onReject}
+              disabled={advancing}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Defer / invite to reapply
+            </button>
+          </div>
         </div>
       )}
 
@@ -164,7 +254,7 @@ export default function PipelineProgress({
       )}
 
       {/* Last stage message */}
-      {snailId && isLastStage && !isSideTrack && ctaHint && (
+      {snailId && isLastStage && !isSideTrack && !isVoted && ctaHint && (
         <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
           <svg className="size-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

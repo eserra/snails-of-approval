@@ -78,6 +78,11 @@ model Snail {
   source         String?
   blockedReason  String? @map("blocked_reason")
 
+  // Board decision (SOA team recommendation → board vote)
+  recommendation    String?   @db.Text  @map("recommendation")
+  boardDecision     String?   @map("board_decision") // approved | rejected
+  boardDecisionDate DateTime? @map("board_decision_date")
+
   // Geography
   city    String?
   state   String?

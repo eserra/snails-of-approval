@@ -23,6 +23,9 @@ export async function GET() {
     // Lapsed: track = "lead", stage = "Lapsed"
     const lapsedCount = lookup.get("lead|Lapsed") ?? 0;
 
+    // Deferred: track = "lead", stage = "Deferred" (board rejected, may reapply)
+    const deferredCount = lookup.get("lead|Deferred") ?? 0;
+
     // Blocked: any track with stage = "Blocked"
     const blockedCount = groups
       .filter((g) => g.stage === "Blocked")
@@ -37,6 +40,7 @@ export async function GET() {
     return NextResponse.json({
       activeCount,
       lapsedCount,
+      deferredCount,
       blockedCount,
       leadFunnel,
     });
