@@ -61,6 +61,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("diversityTags", body.diversityTags || null);
   set("source", body.source || null);
   set("blockedReason", body.blockedReason || null);
+  set("recommendation", body.recommendation || null);
   set("businessStatus", body.businessStatus || null);
   set("track", body.track || "lead");
   set("stage", body.stage || null);
