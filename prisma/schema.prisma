@@ -71,7 +71,6 @@ model Snail {
   track          String  @default("lead") @map("track")
   stage          String? @map("stage")
   formerAwardee  Boolean @default(false) @map("former_awardee")
-  renewalDueYear Int?    @map("renewal_due_year")
   businessStatus String? @map("business_status")
   source         String?
   blockedReason  String? @map("blocked_reason")

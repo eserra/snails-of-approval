@@ -183,7 +183,6 @@ export async function POST(request: NextRequest) {
       track: body.track || "lead",
       stage: body.stage || null,
       formerAwardee: body.formerAwardee || false,
-      renewalDueYear: body.renewalDueYear ? parseInt(body.renewalDueYear) : null,
       businessStatus: body.businessStatus || null,
       source: body.source || null,
       blockedReason: body.blockedReason || null,
