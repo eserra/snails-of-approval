@@ -14,7 +14,7 @@ import { locationKinds, boroughs } from "@/lib/location-kinds";
 import type { ResolvedAddress } from "@/lib/address";
 import PipelineProgress from "./PipelineProgress";
 
-type Chapter = { id: number; name: string };
+type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
 type Category = {
   id: number;
   name: string;
@@ -183,6 +183,10 @@ export default function SnailForm({
       if (usersRes.ok) setUsers(await usersRes.json());
     });
   }, []);
+
+  // Search around the selected chapter, so a half-typed street resolves locally.
+  const searchBias =
+    chapters.find((c) => String(c.id) === form.chapterId)?.centroid ?? null;
 
   function update(field: string, value: string | number | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -650,6 +654,7 @@ export default function SnailForm({
                 <label className={labelClass}>Address *</label>
                 <AddressAutocomplete
                   value={location.address}
+                  bias={searchBias}
                   onChange={(address) => updateLocation(i, "address", address)}
                   onSelect={(resolved) => applyLocationAddress(i, resolved)}
                   placeholder="Start typing to search..."

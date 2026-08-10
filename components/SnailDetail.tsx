@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import PipelineProgress from "./PipelineProgress";
 import DetailSection, { type EditFormProps } from "./DetailSection";
 import FileUpload from "./FileUpload";
-import AddressAutocomplete from "./AddressAutocomplete";
+import AddressAutocomplete, { type SearchBias } from "./AddressAutocomplete";
 import EmailList from "./gmail/EmailList";
 import ComposeEmail from "./gmail/ComposeEmail";
 import { attachmentConfig } from "@/lib/attachment-config";
@@ -76,7 +76,7 @@ type SnailData = Record<string, unknown> & {
   }[];
 };
 
-type Chapter = { id: number; name: string };
+type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
 type Category = { id: number; name: string; parentId: number | null };
 type UserOption = { id: number; name: string };
 
@@ -537,13 +537,14 @@ function locationForm(l: LocationData): LocationFormState {
   };
 }
 
-function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationFormState) => void }) {
+function LocationFields({ f, setF, bias }: { f: LocationFormState; setF: (f: LocationFormState) => void; bias: SearchBias | null }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <label className={labelClass}>Address *</label>
         <AddressAutocomplete
           value={f.address}
+          bias={bias}
           onChange={(addr) => setF({ ...f, address: addr })}
           // Picking a suggestion fills the whole address block, not just the street.
           onSelect={(r) => setF({
@@ -594,9 +595,10 @@ function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationF
   );
 }
 
-function LocationRow({ location, snailId, onList }: {
+function LocationRow({ location, snailId, bias, onList }: {
   location: LocationData;
   snailId: number;
+  bias: SearchBias | null;
   /** Every mutation answers with the snail's full location list; the section just takes it. */
   onList: (list: LocationData[]) => void;
 }) {
@@ -665,7 +667,7 @@ function LocationRow({ location, snailId, onList }: {
   if (editing) {
     return (
       <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-        <LocationFields f={f} setF={setF} />
+        <LocationFields f={f} setF={setF} bias={bias} />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
       </div>
@@ -700,7 +702,7 @@ function LocationRow({ location, snailId, onList }: {
   );
 }
 
-function LocationsSection({ snailId, initial }: { snailId: number; initial: LocationData[] }) {
+function LocationsSection({ snailId, initial, bias }: { snailId: number; initial: LocationData[]; bias: SearchBias | null }) {
   const [locations, setLocations] = useState<LocationData[]>(initial);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -735,7 +737,7 @@ function LocationsSection({ snailId, initial }: { snailId: number; initial: Loca
 
       {adding && (
         <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-          <LocationFields f={f} setF={setF} />
+          <LocationFields f={f} setF={setF} bias={bias} />
           <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyLocationForm); }} saving={saving} />
         </div>
       )}
@@ -749,6 +751,7 @@ function LocationsSection({ snailId, initial }: { snailId: number; initial: Loca
               key={l.id}
               location={l}
               snailId={snailId}
+              bias={bias}
               onList={setLocations}
             />
           ))}
@@ -836,6 +839,13 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   // Award-package fields belong to awardees, not leads.
   const isActive = snail.track === "active";
+  // Search around this snail's own address when it has one, else its chapter.
+  const located =
+    snail.locations.find((l) => l.isPrimary && l.latitude) ??
+    snail.locations.find((l) => l.latitude);
+  const searchBias: SearchBias | null = located?.latitude
+    ? { lat: Number(located.latitude), lon: Number(located.longitude) }
+    : (chapters.find((c) => c.id === snail.chapterId)?.centroid ?? null);
   const showRecommendation = hasRecommendationStage(
     snail.track,
     snail.stage,
@@ -932,7 +942,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       <ContactsSection snailId={snail.id} initial={snail.contacts} />
 
       {/* Locations */}
-      <LocationsSection snailId={snail.id} initial={snail.locations} />
+      <LocationsSection snailId={snail.id} initial={snail.locations} bias={searchBias} />
 
       {/* Map & Visibility */}
       <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>

@@ -12,8 +12,16 @@ import {
 
 type Suggestion = { label: string; resolved: ResolvedAddress };
 
+export type SearchBias = { lat: number; lon: number };
+
 type Props = {
   value: string;
+  /**
+   * Rough centre to search around — the chapter's, or the snail's own address.
+   * Without it a half-typed street matches nationally: "130 w 3rd st" returns
+   * Wabasha, Minnesota before Manhattan.
+   */
+  bias?: SearchBias | null;
   /** Fires on every keystroke, with the raw text. */
   onChange: (address: string) => void;
   /** Fires when a suggestion is picked, with the address split into fields. */
@@ -24,6 +32,7 @@ type Props = {
 
 export default function AddressAutocomplete({
   value,
+  bias,
   onChange,
   onSelect,
   className,
@@ -80,6 +89,10 @@ export default function AddressAutocomplete({
         // Over-fetch: several businesses often share one street address, and the
         // duplicates collapse into a single suggestion below.
         url.searchParams.set("limit", "10");
+        if (bias) {
+          url.searchParams.set("lat", String(bias.lat));
+          url.searchParams.set("lon", String(bias.lon));
+        }
         const res = await fetch(url.toString(), {
           headers: { "User-Agent": "SnailsOfApproval/1.0" },
         });
