@@ -247,6 +247,20 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
 const emptyContactForm = { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false };
 type ContactFormState = typeof emptyContactForm;
 
+/** Editor state for an existing contact. Re-derived every time the editor opens so
+ *  it can't show a flag another row has since taken over. */
+function contactForm(c: ContactData): ContactFormState {
+  return {
+    name: c.name,
+    role: c.role,
+    email: c.email || "",
+    phone: c.phone || "",
+    phoneVanity: c.phoneVanity || "",
+    isPublic: c.isPublic,
+    isPrimary: c.isPrimary,
+  };
+}
+
 function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactFormState) => void }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -283,15 +297,15 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [f, setF] = useState<ContactFormState>({
-    name: contact.name,
-    role: contact.role,
-    email: contact.email || "",
-    phone: contact.phone || "",
-    phoneVanity: contact.phoneVanity || "",
-    isPublic: contact.isPublic,
-    isPrimary: contact.isPrimary,
-  });
+  const [f, setF] = useState<ContactFormState>(() => contactForm(contact));
+
+  // Seeding once would leave the editor showing whatever was true when the row
+  // first rendered — including a Main flag another contact has since taken.
+  function startEditing() {
+    setF(contactForm(contact));
+    setError("");
+    setEditing(true);
+  }
 
   async function save() {
     if (!f.name.trim()) return;
@@ -353,7 +367,7 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex gap-2">
-          <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={startEditing} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
           <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
         </div>
         {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
@@ -427,6 +441,24 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
 const emptyLocationForm = { label: "", kind: "storefront", address: "", city: "", state: "", borough: "", zip: "", latitude: "", longitude: "", isPublic: true, isPrimary: false };
 type LocationFormState = typeof emptyLocationForm;
 
+/** Editor state for an existing location. Re-derived every time the editor opens so
+ *  it can't show a flag another row has since taken over. */
+function locationForm(l: LocationData): LocationFormState {
+  return {
+    label: l.label || "",
+    kind: l.kind,
+    address: l.address || "",
+    city: l.city || "",
+    state: l.state || "",
+    borough: l.borough || "",
+    zip: l.zip || "",
+    latitude: l.latitude ? String(l.latitude) : "",
+    longitude: l.longitude ? String(l.longitude) : "",
+    isPublic: l.isPublic,
+    isPrimary: l.isPrimary,
+  };
+}
+
 function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationFormState) => void }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -493,19 +525,15 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [f, setF] = useState<LocationFormState>({
-    label: location.label || "",
-    kind: location.kind,
-    address: location.address || "",
-    city: location.city || "",
-    state: location.state || "",
-    borough: location.borough || "",
-    zip: location.zip || "",
-    latitude: location.latitude ? String(location.latitude) : "",
-    longitude: location.longitude ? String(location.longitude) : "",
-    isPublic: location.isPublic,
-    isPrimary: location.isPrimary,
-  });
+  const [f, setF] = useState<LocationFormState>(() => locationForm(location));
+
+  // Seeding once would leave the editor showing whatever was true when the row
+  // first rendered — including a Main flag another location has since taken.
+  function startEditing() {
+    setF(locationForm(location));
+    setError("");
+    setEditing(true);
+  }
 
   async function save() {
     if (!f.address.trim()) return;
@@ -566,7 +594,7 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex gap-2">
-          <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={startEditing} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
           <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
         </div>
         {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
