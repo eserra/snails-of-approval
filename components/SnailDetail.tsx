@@ -745,6 +745,30 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         </dl>
       </DetailSection>
 
+      {/* Links */}
+      <DetailSection title="Links" snailId={snail.id} EditForm={(props) => <LinksEditForm {...props} snail={snail} />}>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Other Social" value={snail.otherSocial as string} />
+        </dl>
+      </DetailSection>
+
+      {/* Contacts */}
+      <ContactsSection snailId={snail.id} initial={snail.contacts} />
+
+      {/* Locations */}
+      <LocationsSection snailId={snail.id} initial={snail.locations} />
+
+      {/* Map & Visibility */}
+      <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <Field label="SFNYC Map" value={<span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${snail.status === "published" ? "bg-green-50 text-green-700 ring-1 ring-green-600/20" : "bg-gray-100 text-gray-600"}`}>{snail.status === "published" ? "Published" : "Draft"}</span>} />
+          <Field label="SFUSA Map" value={snail.onSfusaMap ? "Yes" : "No"} />
+        </dl>
+      </DetailSection>
+
       {/* Pipeline */}
       <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
@@ -777,30 +801,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
           <Field label="Source" value={snail.source as string} />
           <Field label="Business Status" value={businessStatusLabel(snail.businessStatus as string | null)} />
-        </dl>
-      </DetailSection>
-
-      {/* Contacts */}
-      <ContactsSection snailId={snail.id} initial={snail.contacts} />
-
-      {/* Links */}
-      <DetailSection title="Links" snailId={snail.id} EditForm={(props) => <LinksEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Other Social" value={snail.otherSocial as string} />
-        </dl>
-      </DetailSection>
-
-      {/* Locations */}
-      <LocationsSection snailId={snail.id} initial={snail.locations} />
-
-      {/* Map & Visibility */}
-      <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="SFNYC Map" value={<span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${snail.status === "published" ? "bg-green-50 text-green-700 ring-1 ring-green-600/20" : "bg-gray-100 text-gray-600"}`}>{snail.status === "published" ? "Published" : "Draft"}</span>} />
-          <Field label="SFUSA Map" value={snail.onSfusaMap ? "Yes" : "No"} />
         </dl>
       </DetailSection>
 

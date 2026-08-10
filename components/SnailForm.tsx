@@ -414,141 +414,47 @@ export default function SnailForm({
         </div>
       </div>
 
-      {/* Pipeline */}
+      {/* Links */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Links</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Track</label>
-            <select
-              value={form.track}
-              onChange={(e) => {
-                const newTrack = e.target.value;
-                update("track", newTrack);
-                if (newTrack === "lead") {
-                  update("stage", form.formerAwardee ? "Lapsed" : "New");
-                } else {
-                  update("stage", "Onboarding");
-                }
-              }}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="lead">Lead</option>
-              {isAdmin && <option value="active">Active</option>}
-            </select>
-          </div>
-
-          <div>
-            <label className={labelClass}>Stage</label>
-            <select
-              value={form.stage}
-              onChange={(e) => {
-                const newStage = e.target.value;
-                update("stage", newStage);
-                const warnings = validateStageChange(newStage, {
-                  attachments: attachments.map((a) => ({ category: a.category })),
-                });
-                setStageWarnings(warnings);
-              }}
-              className={`${inputClass} bg-white`}
-            >
-              {form.track === "lead" ? (
-                isAdmin ? (
-                  <>
-                    <option value="Lapsed">Lapsed</option>
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Applied">Applied</option>
-                    <option value="Visited">Visited</option>
-                    <option value="Voted">Voted</option>
-                    <option value="Blocked">Blocked</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="New">New</option>
-                    <option value="Applied">Applied</option>
-                  </>
-                )
-              ) : (
-                <>
-                  <option value="Onboarding">Onboarding</option>
-                  <option value="Active">Active</option>
-                  <option value="Renewal Due">Renewal Due</option>
-                  <option value="Renewal Submitted">Renewal Submitted</option>
-                  <option value="Blocked">Blocked</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          {form.stage === "Blocked" && (
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Blocked/Rejected Reason</label>
-              <input
-                value={form.blockedReason}
-                onChange={(e) => update("blockedReason", e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* History */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">History</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex items-center gap-2">
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Website</label>
             <input
-              type="checkbox"
-              checked={form.formerAwardee}
-              onChange={(e) => update("formerAwardee", e.target.checked)}
-              className={checkboxClass}
-              id="formerAwardee"
-            />
-            <label htmlFor="formerAwardee" className="text-sm text-gray-700">
-              Former Awardee
-            </label>
-          </div>
-
-          {/* Always occupies the cell so toggling Former Awardee doesn't reflow the grid */}
-          <div>
-            {form.formerAwardee && (
-              <>
-                <label className={labelClass}>Year (First) Awarded</label>
-                <input
-                  type="number"
-                  value={form.yearAwarded}
-                  onChange={(e) => update("yearAwarded", e.target.value)}
-                  className={inputClass}
-                />
-              </>
-            )}
-          </div>
-
-          <div>
-            <label className={labelClass}>Source</label>
-            <input
-              value={form.source}
-              onChange={(e) => update("source", e.target.value)}
+              type="url"
+              value={form.website}
+              onChange={(e) => update("website", e.target.value)}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Business Status</label>
-            <select
-              value={form.businessStatus}
-              onChange={(e) => update("businessStatus", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              {businessStatuses.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <label className={labelClass}>Facebook URL</label>
+            <input
+              type="url"
+              value={form.facebookUrl}
+              onChange={(e) => update("facebookUrl", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Instagram URL</label>
+            <input
+              type="url"
+              value={form.instagramUrl}
+              onChange={(e) => update("instagramUrl", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Other Social Media</label>
+            <input
+              value={form.otherSocial}
+              onChange={(e) => update("otherSocial", e.target.value)}
+              className={inputClass}
+            />
           </div>
         </div>
       </div>
@@ -660,51 +566,6 @@ export default function SnailForm({
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Links */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Links</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Website</label>
-            <input
-              type="url"
-              value={form.website}
-              onChange={(e) => update("website", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Facebook URL</label>
-            <input
-              type="url"
-              value={form.facebookUrl}
-              onChange={(e) => update("facebookUrl", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Instagram URL</label>
-            <input
-              type="url"
-              value={form.instagramUrl}
-              onChange={(e) => update("instagramUrl", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Other Social Media</label>
-            <input
-              value={form.otherSocial}
-              onChange={(e) => update("otherSocial", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Locations */}
@@ -896,6 +757,145 @@ export default function SnailForm({
             <label htmlFor="onSfusaMap" className="text-sm text-gray-700">
               On SFUSA Map
             </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Track</label>
+            <select
+              value={form.track}
+              onChange={(e) => {
+                const newTrack = e.target.value;
+                update("track", newTrack);
+                if (newTrack === "lead") {
+                  update("stage", form.formerAwardee ? "Lapsed" : "New");
+                } else {
+                  update("stage", "Onboarding");
+                }
+              }}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="lead">Lead</option>
+              {isAdmin && <option value="active">Active</option>}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Stage</label>
+            <select
+              value={form.stage}
+              onChange={(e) => {
+                const newStage = e.target.value;
+                update("stage", newStage);
+                const warnings = validateStageChange(newStage, {
+                  attachments: attachments.map((a) => ({ category: a.category })),
+                });
+                setStageWarnings(warnings);
+              }}
+              className={`${inputClass} bg-white`}
+            >
+              {form.track === "lead" ? (
+                isAdmin ? (
+                  <>
+                    <option value="Lapsed">Lapsed</option>
+                    <option value="New">New</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Applied">Applied</option>
+                    <option value="Visited">Visited</option>
+                    <option value="Voted">Voted</option>
+                    <option value="Blocked">Blocked</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="New">New</option>
+                    <option value="Applied">Applied</option>
+                  </>
+                )
+              ) : (
+                <>
+                  <option value="Onboarding">Onboarding</option>
+                  <option value="Active">Active</option>
+                  <option value="Renewal Due">Renewal Due</option>
+                  <option value="Renewal Submitted">Renewal Submitted</option>
+                  <option value="Blocked">Blocked</option>
+                </>
+              )}
+            </select>
+          </div>
+
+          {form.stage === "Blocked" && (
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Blocked/Rejected Reason</label>
+              <input
+                value={form.blockedReason}
+                onChange={(e) => update("blockedReason", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* History */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-900">History</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.formerAwardee}
+              onChange={(e) => update("formerAwardee", e.target.checked)}
+              className={checkboxClass}
+              id="formerAwardee"
+            />
+            <label htmlFor="formerAwardee" className="text-sm text-gray-700">
+              Former Awardee
+            </label>
+          </div>
+
+          {/* Always occupies the cell so toggling Former Awardee doesn't reflow the grid */}
+          <div>
+            {form.formerAwardee && (
+              <>
+                <label className={labelClass}>Year (First) Awarded</label>
+                <input
+                  type="number"
+                  value={form.yearAwarded}
+                  onChange={(e) => update("yearAwarded", e.target.value)}
+                  className={inputClass}
+                />
+              </>
+            )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Source</label>
+            <input
+              value={form.source}
+              onChange={(e) => update("source", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Business Status</label>
+            <select
+              value={form.businessStatus}
+              onChange={(e) => update("businessStatus", e.target.value)}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="">Select...</option>
+              {businessStatuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
