@@ -313,12 +313,6 @@ export default function AdminSnailsPage() {
                       {snail.assignee?.name || "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/admin/snails/${snail.id}`}
-                        className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
-                      >
-                        Edit
-                      </Link>
                       <button
                         onClick={() => handleDelete(snail.id, snail.name)}
                         className="text-red-600 hover:text-red-700 text-sm font-medium"
