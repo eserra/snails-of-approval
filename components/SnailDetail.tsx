@@ -15,6 +15,7 @@ import {
   serializeDiversityTags,
 } from "@/lib/diversity-tags";
 import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
+import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 
 /* ── shared types ── */
 
@@ -197,7 +198,7 @@ function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.formerAwardee} onChange={(e) => setF({ ...f, formerAwardee: e.target.checked })} className={checkboxClass} id="fa-edit" /><label htmlFor="fa-edit" className="text-sm text-gray-700">Former Awardee</label></div>
         {f.formerAwardee && <div><label className={labelClass}>Year (First) Awarded</label><input type="number" value={f.yearAwarded} onChange={(e) => setF({ ...f, yearAwarded: e.target.value })} className={inputClass} /></div>}
         <div><label className={labelClass}>Source</label><input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Confirmed - In Business">Confirmed - In Business</option><option value="TBC">TBC</option></select></div>
+        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option>{businessStatuses.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
@@ -591,7 +592,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         <dl className="grid gap-2 sm:grid-cols-2">
           {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
           <Field label="Source" value={snail.source as string} />
-          <Field label="Business Status" value={snail.businessStatus as string} />
+          <Field label="Business Status" value={businessStatusLabel(snail.businessStatus as string | null)} />
         </dl>
       </DetailSection>
 

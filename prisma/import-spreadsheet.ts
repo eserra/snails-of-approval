@@ -95,7 +95,13 @@ async function main() {
     if (!stage && formerAwardee) stage = "Lapsed";
     if (!stage && track === "lead") stage = "New";
     if (!stage && track === "active") stage = "Active";
-    const businessStatus = str(row["Business Status"]);
+    // Spreadsheet labels → machine-readable Snail.businessStatus values
+    const rawBusinessStatus = str(row["Business Status"]);
+    const businessStatus =
+      rawBusinessStatus === "Confirmed - In Business" ? "active"
+      : rawBusinessStatus === "Permanently Closed" ? "permanently_closed"
+      : rawBusinessStatus === "TBC" ? "to_be_confirmed"
+      : rawBusinessStatus;
     const source = str(row["Source"]);
     const establishmentType = str(row["Establishment Type (SFNYC)"]);
     const borough = str(row["Borough"]);

@@ -8,6 +8,7 @@ import { validateStageChange } from "@/lib/stage-requirements";
 import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
+import { businessStatuses } from "@/lib/business-status";
 import PipelineProgress from "./PipelineProgress";
 
 type Chapter = { id: number; name: string };
@@ -459,17 +460,20 @@ export default function SnailForm({
             </label>
           </div>
 
-          {form.formerAwardee && (
-            <div>
-              <label className={labelClass}>Year (First) Awarded</label>
-              <input
-                type="number"
-                value={form.yearAwarded}
-                onChange={(e) => update("yearAwarded", e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          )}
+          {/* Always occupies the cell so toggling Former Awardee doesn't reflow the grid */}
+          <div>
+            {form.formerAwardee && (
+              <>
+                <label className={labelClass}>Year (First) Awarded</label>
+                <input
+                  type="number"
+                  value={form.yearAwarded}
+                  onChange={(e) => update("yearAwarded", e.target.value)}
+                  className={inputClass}
+                />
+              </>
+            )}
+          </div>
 
           <div>
             <label className={labelClass}>Source</label>
@@ -488,8 +492,11 @@ export default function SnailForm({
               className={`${inputClass} bg-white`}
             >
               <option value="">Select...</option>
-              <option value="Confirmed - In Business">Confirmed - In Business</option>
-              <option value="TBC">TBC</option>
+              {businessStatuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
