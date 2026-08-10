@@ -76,7 +76,6 @@ type SnailData = {
   zip: string;
   onSfusaMap: boolean;
 
-  establishmentType: string;
   assigneeId: string;
   lastTouchDate: string;
   welcomeLetterSent: boolean;
@@ -116,7 +115,6 @@ const emptySnail: SnailData = {
   zip: "",
   onSfusaMap: false,
 
-  establishmentType: "",
   assigneeId: "",
   lastTouchDate: "",
   welcomeLetterSent: false,
@@ -320,15 +318,6 @@ export default function SnailForm({
                   );
                 })}
             </select>
-          </div>
-
-          <div>
-            <label className={labelClass}>Establishment Type<br /><span className="text-gray-400 font-normal text-xs">DEPRECATED (SFNYC Legacy)</span></label>
-            <input
-              value={form.establishmentType}
-              onChange={(e) => update("establishmentType", e.target.value)}
-              className={`${inputClass} text-gray-400`}
-            />
           </div>
 
           <div className="sm:col-span-2">
