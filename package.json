@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "seed": "npx tsx prisma/seed.ts",
+    "seed:categories": "npx tsx prisma/seed-categories.ts",
     "postinstall": "prisma generate",
     "postbuild": "prisma migrate deploy"
   },
