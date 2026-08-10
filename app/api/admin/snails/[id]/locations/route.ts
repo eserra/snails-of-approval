@@ -9,7 +9,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const locations = await prisma.location.findMany({
     where: { snailId: parseInt(id) },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
   return NextResponse.json(locations);
 }
@@ -37,8 +37,11 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
   const snailId = parseInt(id);
   const location = await prisma.$transaction(async (tx) => {
-    // A snail has at most one main location.
-    if (body.isPrimary) {
+    // Exactly one main location per snail: the first one added is always it, and
+    // flagging a new one demotes the incumbent.
+    const isFirst = (await tx.location.count({ where: { snailId } })) === 0;
+    const isPrimary = isFirst || !!body.isPrimary;
+    if (isPrimary && !isFirst) {
       await tx.location.updateMany({
         where: { snailId, isPrimary: true },
         data: { isPrimary: false },
@@ -56,7 +59,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         latitude,
         longitude,
         isPublic: body.isPublic !== false,
-        isPrimary: !!body.isPrimary,
+        isPrimary,
         snailId,
       },
     });

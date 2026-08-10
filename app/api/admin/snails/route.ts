@@ -28,6 +28,25 @@ export async function POST(request: NextRequest) {
   const token = await getToken({ req: request });
   const body = await request.json();
 
+  // A snail must have someone to talk to and somewhere to point at. Checked before
+  // geocoding so a rejected request costs no Nominatim calls.
+  const hasContact =
+    Array.isArray(body.contacts) &&
+    body.contacts.some((c: { name?: string }) => c.name?.trim());
+  const hasLocation =
+    Array.isArray(body.locations) &&
+    body.locations.some((l: { address?: string }) => l.address?.trim());
+  if (!hasContact || !hasLocation) {
+    const missing = [
+      !hasContact ? "one contact" : null,
+      !hasLocation ? "one location" : null,
+    ].filter(Boolean);
+    return NextResponse.json(
+      { error: `A snail needs at least ${missing.join(" and ")}.` },
+      { status: 400 }
+    );
+  }
+
   let slug = slugify(body.name);
   const existing = await prisma.snail.findUnique({ where: { slug } });
   if (existing) {
@@ -112,6 +131,8 @@ export async function POST(request: NextRequest) {
           }
         )
     : [];
+  // A snail with contacts but none flagged: the first one is the main one.
+  if (!primaryTaken && contactsCreate.length) contactsCreate[0].isPrimary = true;
 
   const snail = await prisma.snail.create({
     data: {

@@ -185,7 +185,8 @@ export default function SnailForm({
       ...prev,
       contacts: [
         ...prev.contacts,
-        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false },
+        // The first contact added is the main one by default.
+        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: prev.contacts.length === 0 },
       ],
     }));
   }
@@ -194,16 +195,25 @@ export default function SnailForm({
     setForm((prev) => ({
       ...prev,
       contacts: prev.contacts.map((c, i) =>
-        i === index ? { ...c, [field]: value } : c
+        // Only one contact can be the main one.
+        field === "isPrimary" && value === true
+          ? { ...c, isPrimary: i === index }
+          : i === index
+            ? { ...c, [field]: value }
+            : c
       ),
     }));
   }
 
   function removeContact(index: number) {
-    setForm((prev) => ({
-      ...prev,
-      contacts: prev.contacts.filter((_, i) => i !== index),
-    }));
+    setForm((prev) => {
+      const contacts = prev.contacts.filter((_, i) => i !== index);
+      // Dropping the main contact hands the role to the first one left.
+      if (contacts.length && !contacts.some((c) => c.isPrimary)) {
+        contacts[0] = { ...contacts[0], isPrimary: true };
+      }
+      return { ...prev, contacts };
+    });
   }
 
   function addLocation() {
@@ -248,14 +258,30 @@ export default function SnailForm({
   }
 
   function removeLocation(index: number) {
-    setForm((prev) => ({
-      ...prev,
-      locations: prev.locations.filter((_, i) => i !== index),
-    }));
+    setForm((prev) => {
+      const locations = prev.locations.filter((_, i) => i !== index);
+      // Dropping the main location hands the role to the first one left.
+      if (locations.length && !locations.some((l) => l.isPrimary)) {
+        locations[0] = { ...locations[0], isPrimary: true };
+      }
+      return { ...prev, locations };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Mirrors the check in POST /api/admin/snails: a snail needs someone to talk
+    // to and somewhere to point at.
+    const missing = [
+      !form.contacts.some((c) => c.name.trim()) ? "one contact" : null,
+      !form.locations.some((l) => l.address.trim()) ? "one location" : null,
+    ].filter(Boolean);
+    if (missing.length) {
+      setError(`A snail needs at least ${missing.join(" and ")}.`);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -462,7 +488,7 @@ export default function SnailForm({
       {/* Contacts */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Contacts *</h2>
           <button
             type="button"
             onClick={addContact}
@@ -474,7 +500,7 @@ export default function SnailForm({
 
         {form.contacts.length === 0 && (
           <p className="text-sm text-gray-400">
-            No contacts yet. Add the people connected to this establishment.
+            No contacts yet. At least one is required.
           </p>
         )}
 
@@ -571,7 +597,7 @@ export default function SnailForm({
       {/* Locations */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Locations</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Locations *</h2>
           <button
             type="button"
             onClick={addLocation}
@@ -583,7 +609,7 @@ export default function SnailForm({
 
         {form.locations.length === 0 && (
           <p className="text-sm text-gray-400">
-            No locations yet. Add the places connected to this establishment.
+            No locations yet. At least one is required.
           </p>
         )}
 

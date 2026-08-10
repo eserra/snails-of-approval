@@ -8,7 +8,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const contacts = await prisma.contact.findMany({
     where: { snailId: parseInt(id) },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
   return NextResponse.json(contacts);
 }
@@ -25,8 +25,11 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
   const snailId = parseInt(id);
   const contact = await prisma.$transaction(async (tx) => {
-    // A snail has at most one primary contact.
-    if (body.isPrimary) {
+    // Exactly one primary contact per snail: the first one added is always it, and
+    // flagging a new one demotes the incumbent.
+    const isFirst = (await tx.contact.count({ where: { snailId } })) === 0;
+    const isPrimary = isFirst || !!body.isPrimary;
+    if (isPrimary && !isFirst) {
       await tx.contact.updateMany({
         where: { snailId, isPrimary: true },
         data: { isPrimary: false },
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         phone: body.phone || null,
         phoneVanity: body.phoneVanity || null,
         isPublic: !!body.isPublic,
-        isPrimary: !!body.isPrimary,
+        isPrimary,
         snailId,
       },
     });

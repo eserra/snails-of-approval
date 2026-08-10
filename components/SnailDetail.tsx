@@ -282,6 +282,7 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [f, setF] = useState<ContactFormState>({
     name: contact.name,
     role: contact.role,
@@ -304,19 +305,31 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
     if (res.ok) {
       onChange(await res.json());
       setEditing(false);
+      setError("");
+      return;
     }
+    // e.g. refusing to unset the snail's only main contact.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to save contact");
   }
 
   async function remove() {
     if (!confirm(`Remove contact "${contact.name}"?`)) return;
     const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, { method: "DELETE" });
-    if (res.ok) onRemove(contact.id);
+    if (res.ok) {
+      onRemove(contact.id);
+      return;
+    }
+    // The server refuses to remove a snail's last contact.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to remove contact");
   }
 
   if (editing) {
     return (
       <div className="border border-gray-200 rounded-lg p-3 space-y-3">
         <ContactFields f={f} setF={setF} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
       </div>
     );
@@ -338,9 +351,12 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
           {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
         </p>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
-        <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+        </div>
+        {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
       </div>
     </div>
   );
@@ -456,6 +472,7 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [f, setF] = useState<LocationFormState>({
     label: location.label || "",
     kind: location.kind,
@@ -482,19 +499,31 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
     if (res.ok) {
       onChange(await res.json());
       setEditing(false);
+      setError("");
+      return;
     }
+    // e.g. refusing to unset the snail's only main location.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to save location");
   }
 
   async function remove() {
     if (!confirm(`Remove location "${location.address}"?`)) return;
     const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, { method: "DELETE" });
-    if (res.ok) onRemove(location.id);
+    if (res.ok) {
+      onRemove(location.id);
+      return;
+    }
+    // The server refuses to remove a snail's last location.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to remove location");
   }
 
   if (editing) {
     return (
       <div className="border border-gray-200 rounded-lg p-3 space-y-3">
         <LocationFields f={f} setF={setF} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
       </div>
     );
@@ -515,9 +544,12 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
           {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
         </p>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
-        <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+        </div>
+        {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
       </div>
     </div>
   );

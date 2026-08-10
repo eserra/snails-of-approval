@@ -44,6 +44,19 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   }
 
   const lId = parseInt(locationId);
+
+  // A snail always has exactly one main location, so it can't be unset directly —
+  // promoting a different one is how you move it.
+  if (data.isPrimary === false) {
+    const current = await prisma.location.findUnique({ where: { id: lId } });
+    if (current?.isPrimary) {
+      return NextResponse.json(
+        { error: "A snail needs a main location. Mark another location as main instead." },
+        { status: 400 }
+      );
+    }
+  }
+
   const location = await prisma.$transaction(async (tx) => {
     // Promoting this location to main demotes the snail's other locations.
     if (data.isPrimary === true) {
@@ -62,7 +75,32 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   const forbidden = await requireWrite(request);
   if (forbidden) return forbidden;
 
-  const { locationId } = await params;
-  await prisma.location.delete({ where: { id: parseInt(locationId) } });
+  const { id, locationId } = await params;
+
+  // A snail must keep at least one location.
+  const remaining = await prisma.location.count({
+    where: { snailId: parseInt(id), id: { not: parseInt(locationId) } },
+  });
+  if (remaining === 0) {
+    return NextResponse.json(
+      { error: "A snail needs at least one location. Add another before removing this one." },
+      { status: 400 }
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const removed = await tx.location.delete({ where: { id: parseInt(locationId) } });
+    // Removing the main location hands the role to the oldest one left, so a snail
+    // is never left without one.
+    if (removed.isPrimary) {
+      const next = await tx.location.findFirst({
+        where: { snailId: parseInt(id) },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      if (next) {
+        await tx.location.update({ where: { id: next.id }, data: { isPrimary: true } });
+      }
+    }
+  });
   return NextResponse.json({ ok: true });
 }
