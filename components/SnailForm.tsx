@@ -5,12 +5,16 @@ import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
 import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
+import { stageLabel } from "@/lib/pipeline-stages";
 import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
+import { businessStatuses } from "@/lib/business-status";
+import { locationKinds, boroughs } from "@/lib/location-kinds";
+import type { ResolvedAddress } from "@/lib/address";
 import PipelineProgress from "./PipelineProgress";
 
-type Chapter = { id: number; name: string };
+type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
 type Category = {
   id: number;
   name: string;
@@ -45,15 +49,27 @@ type ContactInput = {
   isPrimary: boolean;
 };
 
+type LocationInput = {
+  label: string;
+  kind: string;
+  address: string;
+  city: string;
+  state: string;
+  borough: string;
+  zip: string;
+  latitude: string;
+  longitude: string;
+  isPublic: boolean;
+  isPrimary: boolean;
+};
+
 type SnailData = {
   id?: number;
   name: string;
   yearAwarded: number | string;
   description: string;
-  address: string;
-  latitude: string;
-  longitude: string;
   contacts: ContactInput[];
+  locations: LocationInput[];
   website: string;
   facebookUrl: string;
   instagramUrl: string;
@@ -70,13 +86,8 @@ type SnailData = {
   businessStatus: string;
   source: string;
   blockedReason: string;
-  city: string;
-  state: string;
-  borough: string;
-  zip: string;
   onSfusaMap: boolean;
 
-  establishmentType: string;
   assigneeId: string;
   lastTouchDate: string;
   welcomeLetterSent: boolean;
@@ -91,10 +102,8 @@ const emptySnail: SnailData = {
   name: "",
   yearAwarded: new Date().getFullYear(),
   description: "",
-  address: "",
-  latitude: "",
-  longitude: "",
   contacts: [],
+  locations: [],
   website: "",
   facebookUrl: "",
   instagramUrl: "",
@@ -104,25 +113,26 @@ const emptySnail: SnailData = {
   categoryId: "",
   chapterId: "",
   track: "lead",
-  stage: "New",
+  stage: "new",
   formerAwardee: false,
   renewalDueYear: "",
   businessStatus: "",
   source: "",
   blockedReason: "",
-  city: "",
-  state: "",
-  borough: "",
-  zip: "",
   onSfusaMap: false,
 
-  establishmentType: "",
   assigneeId: "",
   lastTouchDate: "",
   welcomeLetterSent: false,
   stickersDelivered: false,
   diversityTags: "",
 };
+
+// Which stages each role may set directly. Editors get the two they routinely
+// move a lead through; everything else goes via the pipeline bar.
+const leadStageOptions = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "blocked"];
+const editorLeadStageOptions = ["new", "applied"];
+const activeStageOptions = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
@@ -174,6 +184,10 @@ export default function SnailForm({
     });
   }, []);
 
+  // Search around the selected chapter, so a half-typed street resolves locally.
+  const searchBias =
+    chapters.find((c) => String(c.id) === form.chapterId)?.centroid ?? null;
+
   function update(field: string, value: string | number | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -183,7 +197,8 @@ export default function SnailForm({
       ...prev,
       contacts: [
         ...prev.contacts,
-        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false },
+        // The first contact added is the main one by default.
+        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: prev.contacts.length === 0 },
       ],
     }));
   }
@@ -192,20 +207,115 @@ export default function SnailForm({
     setForm((prev) => ({
       ...prev,
       contacts: prev.contacts.map((c, i) =>
-        i === index ? { ...c, [field]: value } : c
+        // Only one contact can be the main one.
+        field === "isPrimary" && value === true
+          ? { ...c, isPrimary: i === index }
+          : i === index
+            ? { ...c, [field]: value }
+            : c
       ),
     }));
   }
 
   function removeContact(index: number) {
+    setForm((prev) => {
+      const contacts = prev.contacts.filter((_, i) => i !== index);
+      // Dropping the main contact hands the role to the first one left.
+      if (contacts.length && !contacts.some((c) => c.isPrimary)) {
+        contacts[0] = { ...contacts[0], isPrimary: true };
+      }
+      return { ...prev, contacts };
+    });
+  }
+
+  function addLocation() {
     setForm((prev) => ({
       ...prev,
-      contacts: prev.contacts.filter((_, i) => i !== index),
+      locations: [
+        ...prev.locations,
+        {
+          label: "",
+          kind: "storefront",
+          address: "",
+          city: "",
+          state: "",
+          borough: "",
+          zip: "",
+          latitude: "",
+          longitude: "",
+          isPublic: true,
+          // The first location added is the main one by default.
+          isPrimary: prev.locations.length === 0,
+        },
+      ],
     }));
+  }
+
+  function updateLocation(
+    index: number,
+    field: keyof LocationInput,
+    value: string | boolean
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      locations: prev.locations.map((l, i) =>
+        // Only one location can be the main one.
+        field === "isPrimary" && value === true
+          ? { ...l, isPrimary: i === index }
+          : i === index
+            ? { ...l, [field]: value }
+            : l
+      ),
+    }));
+  }
+
+  /** Picking a suggestion fills the whole address block, not just the street. */
+  function applyLocationAddress(index: number, resolved: ResolvedAddress) {
+    setForm((prev) => ({
+      ...prev,
+      locations: prev.locations.map((l, i) =>
+        i === index
+          ? {
+              ...l,
+              address: resolved.address,
+              city: resolved.city,
+              state: resolved.state,
+              zip: resolved.zip,
+              // Boroughs only apply to NYC; leave whatever is there otherwise.
+              borough: resolved.borough || l.borough,
+              latitude: resolved.latitude,
+              longitude: resolved.longitude,
+            }
+          : l
+      ),
+    }));
+  }
+
+  function removeLocation(index: number) {
+    setForm((prev) => {
+      const locations = prev.locations.filter((_, i) => i !== index);
+      // Dropping the main location hands the role to the first one left.
+      if (locations.length && !locations.some((l) => l.isPrimary)) {
+        locations[0] = { ...locations[0], isPrimary: true };
+      }
+      return { ...prev, locations };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Mirrors the check in POST /api/admin/snails: a snail needs someone to talk
+    // to and somewhere to point at.
+    const missing = [
+      !form.contacts.some((c) => c.name.trim()) ? "one contact" : null,
+      !form.locations.some((l) => l.address.trim()) ? "one location" : null,
+    ].filter(Boolean);
+    if (missing.length) {
+      setError(`A snail needs at least ${missing.join(" and ")}.`);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -322,15 +432,6 @@ export default function SnailForm({
             </select>
           </div>
 
-          <div>
-            <label className={labelClass}>Establishment Type<br /><span className="text-gray-400 font-normal text-xs">DEPRECATED (SFNYC Legacy)</span></label>
-            <input
-              value={form.establishmentType}
-              onChange={(e) => update("establishmentType", e.target.value)}
-              className={`${inputClass} text-gray-400`}
-            />
-          </div>
-
           <div className="sm:col-span-2">
             <label className={labelClass}>Diversity / Ownership</label>
             <div className="flex flex-wrap gap-3 mt-1">
@@ -373,135 +474,47 @@ export default function SnailForm({
         </div>
       </div>
 
-      {/* Pipeline */}
+      {/* Links */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Links</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Track</label>
-            <select
-              value={form.track}
-              onChange={(e) => {
-                const newTrack = e.target.value;
-                update("track", newTrack);
-                if (newTrack === "lead") {
-                  update("stage", form.formerAwardee ? "Lapsed" : "New");
-                } else {
-                  update("stage", "Onboarding");
-                }
-              }}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="lead">Lead</option>
-              {isAdmin && <option value="active">Active</option>}
-            </select>
-          </div>
-
-          <div>
-            <label className={labelClass}>Stage</label>
-            <select
-              value={form.stage}
-              onChange={(e) => {
-                const newStage = e.target.value;
-                update("stage", newStage);
-                const warnings = validateStageChange(newStage, {
-                  attachments: attachments.map((a) => ({ category: a.category })),
-                });
-                setStageWarnings(warnings);
-              }}
-              className={`${inputClass} bg-white`}
-            >
-              {form.track === "lead" ? (
-                isAdmin ? (
-                  <>
-                    <option value="Lapsed">Lapsed</option>
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Applied">Applied</option>
-                    <option value="Visited">Visited</option>
-                    <option value="Voted">Voted</option>
-                    <option value="Blocked">Blocked</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="New">New</option>
-                    <option value="Applied">Applied</option>
-                  </>
-                )
-              ) : (
-                <>
-                  <option value="Onboarding">Onboarding</option>
-                  <option value="Active">Active</option>
-                  <option value="Renewal Due">Renewal Due</option>
-                  <option value="Renewal Submitted">Renewal Submitted</option>
-                  <option value="Blocked">Blocked</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          {form.stage === "Blocked" && (
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Blocked/Rejected Reason</label>
-              <input
-                value={form.blockedReason}
-                onChange={(e) => update("blockedReason", e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* History */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">History</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex items-center gap-2">
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Website</label>
             <input
-              type="checkbox"
-              checked={form.formerAwardee}
-              onChange={(e) => update("formerAwardee", e.target.checked)}
-              className={checkboxClass}
-              id="formerAwardee"
-            />
-            <label htmlFor="formerAwardee" className="text-sm text-gray-700">
-              Former Awardee
-            </label>
-          </div>
-
-          {form.formerAwardee && (
-            <div>
-              <label className={labelClass}>Year (First) Awarded</label>
-              <input
-                type="number"
-                value={form.yearAwarded}
-                onChange={(e) => update("yearAwarded", e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>Source</label>
-            <input
-              value={form.source}
-              onChange={(e) => update("source", e.target.value)}
+              type="url"
+              value={form.website}
+              onChange={(e) => update("website", e.target.value)}
               className={inputClass}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Business Status</label>
-            <select
-              value={form.businessStatus}
-              onChange={(e) => update("businessStatus", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              <option value="Confirmed - In Business">Confirmed - In Business</option>
-              <option value="TBC">TBC</option>
-            </select>
+            <label className={labelClass}>Facebook URL</label>
+            <input
+              type="url"
+              value={form.facebookUrl}
+              onChange={(e) => update("facebookUrl", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Instagram URL</label>
+            <input
+              type="url"
+              value={form.instagramUrl}
+              onChange={(e) => update("instagramUrl", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Other Social Media</label>
+            <input
+              value={form.otherSocial}
+              onChange={(e) => update("otherSocial", e.target.value)}
+              className={inputClass}
+            />
           </div>
         </div>
       </div>
@@ -509,7 +522,7 @@ export default function SnailForm({
       {/* Contacts */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Contacts *</h2>
           <button
             type="button"
             onClick={addContact}
@@ -521,7 +534,7 @@ export default function SnailForm({
 
         {form.contacts.length === 0 && (
           <p className="text-sm text-gray-400">
-            No contacts yet. Add the people connected to this establishment.
+            No contacts yet. At least one is required.
           </p>
         )}
 
@@ -615,135 +628,162 @@ export default function SnailForm({
         ))}
       </div>
 
-      {/* Links */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Links</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Website</label>
-            <input
-              type="url"
-              value={form.website}
-              onChange={(e) => update("website", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Facebook URL</label>
-            <input
-              type="url"
-              value={form.facebookUrl}
-              onChange={(e) => update("facebookUrl", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Instagram URL</label>
-            <input
-              type="url"
-              value={form.instagramUrl}
-              onChange={(e) => update("instagramUrl", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Other Social Media</label>
-            <input
-              value={form.otherSocial}
-              onChange={(e) => update("otherSocial", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+      {/* Locations */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Locations *</h2>
+          <button
+            type="button"
+            onClick={addLocation}
+            className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+          >
+            + Add Location
+          </button>
         </div>
-      </div>
 
-      {/* Location */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900">Location</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Address</label>
-            <AddressAutocomplete
-              value={form.address}
-              onChange={(address, lat, lon) => {
-                update("address", address);
-                if (lat && lon) {
-                  update("latitude", lat);
-                  update("longitude", lon);
-                }
-              }}
-              placeholder="Start typing to search..."
-              className={inputClass}
-            />
-          </div>
+        {form.locations.length === 0 && (
+          <p className="text-sm text-gray-400">
+            No locations yet. At least one is required.
+          </p>
+        )}
 
-          <div>
-            <label className={labelClass}>City</label>
-            <input
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+        {form.locations.map((location, i) => (
+          <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Address *</label>
+                <AddressAutocomplete
+                  value={location.address}
+                  bias={searchBias}
+                  onChange={(address) => updateLocation(i, "address", address)}
+                  onSelect={(resolved) => applyLocationAddress(i, resolved)}
+                  placeholder="Start typing to search..."
+                  className={inputClass}
+                />
+              </div>
 
-          <div>
-            <label className={labelClass}>State</label>
-            <input
-              value={form.state}
-              onChange={(e) => update("state", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+              <div>
+                <label className={labelClass}>City</label>
+                <input
+                  value={location.city}
+                  onChange={(e) => updateLocation(i, "city", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
 
-          <div>
-            <label className={labelClass}>Borough</label>
-            <select
-              value={form.borough}
-              onChange={(e) => update("borough", e.target.value)}
-              className={`${inputClass} bg-white`}
-            >
-              <option value="">Select...</option>
-              <option value="Manhattan">Manhattan</option>
-              <option value="Brooklyn">Brooklyn</option>
-              <option value="Queens">Queens</option>
-              <option value="The Bronx">The Bronx</option>
-              <option value="Staten Island">Staten Island</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+              <div>
+                <label className={labelClass}>State</label>
+                <input
+                  value={location.state}
+                  onChange={(e) => updateLocation(i, "state", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
 
-          <div>
-            <label className={labelClass}>ZIP</label>
-            <input
-              value={form.zip}
-              onChange={(e) => update("zip", e.target.value)}
-              className={inputClass}
-            />
-          </div>
+              <div>
+                <label className={labelClass}>Borough</label>
+                <select
+                  value={location.borough}
+                  onChange={(e) => updateLocation(i, "borough", e.target.value)}
+                  className={`${inputClass} bg-white`}
+                >
+                  <option value="">Select...</option>
+                  {boroughs.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className={labelClass}>Latitude</label>
-            <input
-              value={form.latitude}
-              onChange={(e) => update("latitude", e.target.value)}
-              placeholder="Auto-filled from address"
-              className={inputClass}
-            />
-          </div>
+              <div>
+                <label className={labelClass}>ZIP</label>
+                <input
+                  value={location.zip}
+                  onChange={(e) => updateLocation(i, "zip", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
 
-          <div>
-            <label className={labelClass}>Longitude</label>
-            <input
-              value={form.longitude}
-              onChange={(e) => update("longitude", e.target.value)}
-              placeholder="Auto-filled from address"
-              className={inputClass}
-            />
+              <div>
+                <label className={labelClass}>Type</label>
+                <select
+                  value={location.kind}
+                  onChange={(e) => updateLocation(i, "kind", e.target.value)}
+                  className={`${inputClass} bg-white`}
+                >
+                  {locationKinds.map((k) => (
+                    <option key={k.value} value={k.value}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>
+                  Label{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  value={location.label}
+                  onChange={(e) => updateLocation(i, "label", e.target.value)}
+                  placeholder="e.g. Union Square stall"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Latitude</label>
+                <input
+                  value={location.latitude}
+                  onChange={(e) => updateLocation(i, "latitude", e.target.value)}
+                  placeholder="Auto-filled from address"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Longitude</label>
+                <input
+                  value={location.longitude}
+                  onChange={(e) => updateLocation(i, "longitude", e.target.value)}
+                  placeholder="Auto-filled from address"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={location.isPrimary}
+                    onChange={(e) => updateLocation(i, "isPrimary", e.target.checked)}
+                    className={checkboxClass}
+                  />
+                  Main location (address used for submissions)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={location.isPublic}
+                    onChange={(e) => updateLocation(i, "isPublic", e.target.checked)}
+                    className={checkboxClass}
+                  />
+                  Show on the public map and page
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeLocation(i)}
+                className="text-red-600 hover:text-red-700 text-sm font-medium self-start"
+              >
+                Remove
+              </button>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
       {/* Map & Visibility */}
@@ -773,6 +813,129 @@ export default function SnailForm({
             <label htmlFor="onSfusaMap" className="text-sm text-gray-700">
               On SFUSA Map
             </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Pipeline */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Track</label>
+            <select
+              value={form.track}
+              onChange={(e) => {
+                const newTrack = e.target.value;
+                update("track", newTrack);
+                if (newTrack === "lead") {
+                  update("stage", form.formerAwardee ? "lapsed" : "new");
+                } else {
+                  update("stage", "onboarding");
+                }
+              }}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="lead">Lead</option>
+              {isAdmin && <option value="active">Active</option>}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Stage</label>
+            <select
+              value={form.stage}
+              onChange={(e) => {
+                const newStage = e.target.value;
+                update("stage", newStage);
+                const warnings = validateStageChange(newStage, {
+                  attachments: attachments.map((a) => ({ category: a.category })),
+                });
+                setStageWarnings(warnings);
+              }}
+              className={`${inputClass} bg-white`}
+            >
+              {(form.track === "lead"
+                ? isAdmin
+                  ? leadStageOptions
+                  : editorLeadStageOptions
+                : activeStageOptions
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {stageLabel(value)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {form.stage === "blocked" && (
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Blocked/Rejected Reason</label>
+              <input
+                value={form.blockedReason}
+                onChange={(e) => update("blockedReason", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* History */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-900">History</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.formerAwardee}
+              onChange={(e) => update("formerAwardee", e.target.checked)}
+              className={checkboxClass}
+              id="formerAwardee"
+            />
+            <label htmlFor="formerAwardee" className="text-sm text-gray-700">
+              Former Awardee
+            </label>
+          </div>
+
+          {/* Always occupies the cell so toggling Former Awardee doesn't reflow the grid */}
+          <div>
+            {form.formerAwardee && (
+              <>
+                <label className={labelClass}>Year (First) Awarded</label>
+                <input
+                  type="number"
+                  value={form.yearAwarded}
+                  onChange={(e) => update("yearAwarded", e.target.value)}
+                  className={inputClass}
+                />
+              </>
+            )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Source</label>
+            <input
+              value={form.source}
+              onChange={(e) => update("source", e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Business Status</label>
+            <select
+              value={form.businessStatus}
+              onChange={(e) => update("businessStatus", e.target.value)}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="">Select...</option>
+              {businessStatuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

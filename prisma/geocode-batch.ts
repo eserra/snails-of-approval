@@ -13,45 +13,51 @@ function sleep(ms: number) {
 }
 
 async function main() {
-  const snails = await prisma.snail.findMany({
+  const locations = await prisma.location.findMany({
     where: { address: { not: null }, latitude: null },
-    select: { id: true, name: true, address: true, borough: true, zip: true },
-    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      address: true,
+      borough: true,
+      zip: true,
+      snail: { select: { name: true } },
+    },
+    orderBy: { id: "asc" },
   });
 
-  console.log(`Found ${snails.length} snails to geocode\n`);
+  console.log(`Found ${locations.length} locations to geocode\n`);
 
   let succeeded = 0;
   let failed = 0;
 
-  for (let i = 0; i < snails.length; i++) {
-    const s = snails[i];
-    const parts = [s.address];
-    if (s.borough) parts.push(s.borough);
+  for (let i = 0; i < locations.length; i++) {
+    const l = locations[i];
+    const parts = [l.address];
+    if (l.borough) parts.push(l.borough);
     parts.push("New York, NY");
-    if (s.zip) parts.push(s.zip);
+    if (l.zip) parts.push(l.zip);
     const fullAddress = parts.join(", ");
 
     const coords = await geocodeAddress(fullAddress);
 
     if (coords) {
-      await prisma.snail.update({
-        where: { id: s.id },
+      await prisma.location.update({
+        where: { id: l.id },
         data: { latitude: coords.latitude, longitude: coords.longitude },
       });
       console.log(
-        `[${i + 1}/${snails.length}] ✓ "${s.name}" → ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
+        `[${i + 1}/${locations.length}] ✓ "${l.snail.name}" → ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
       );
       succeeded++;
     } else {
       console.log(
-        `[${i + 1}/${snails.length}] ✗ "${s.name}" — no results for: ${fullAddress}`
+        `[${i + 1}/${locations.length}] ✗ "${l.snail.name}" — no results for: ${fullAddress}`
       );
       failed++;
     }
 
     // Nominatim rate limit: 1 req/sec
-    if (i < snails.length - 1) {
+    if (i < locations.length - 1) {
       await sleep(1100);
     }
   }

@@ -6,9 +6,9 @@ import { requireWrite } from "@/lib/rbac";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * Records the board decision fork out of the "Voted" stage:
+ * Records the board decision fork out of the "board_review" stage:
  *  - approved → moves the snail onto the active track (Onboarding)
- *  - rejected → moves to the "Deferred" side-track (reapply later) + logs a note
+ *  - rejected → moves to the "deferred" side-track (reapply later) + logs a note
  *  - reopen   → returns a Deferred snail to the lead funnel to reapply
  */
 export async function POST(request: NextRequest, { params }: Ctx) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       where: { id: snailId },
       data: {
         track: "active",
-        stage: "Onboarding",
+        stage: "onboarding",
         boardDecision: "approved",
         boardDecisionDate: now,
         lastTouchDate: now,
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     const updated = await prisma.snail.update({
       where: { id: snailId },
       data: {
-        stage: "Deferred",
+        stage: "deferred",
         boardDecision: "rejected",
         boardDecisionDate: now,
         lastTouchDate: now,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       where: { id: snailId },
       data: {
         track: "lead",
-        stage: body.stage || "Contacted",
+        stage: body.stage || "contacted",
         boardDecision: null,
         boardDecisionDate: null,
         lastTouchDate: now,

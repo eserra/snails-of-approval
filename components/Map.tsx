@@ -6,14 +6,21 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
+import { locationKindLabel } from "@/lib/location-kinds";
 
-type MapSnail = {
-  slug: string;
-  name: string;
+// One entry per public location, so a snail with several locations has several markers.
+type MapLocation = {
+  id: number;
+  kind: string;
+  label: string | null;
+  address: string | null;
   latitude: string | null;
   longitude: string | null;
+  isPrimary: boolean;
+  slug: string;
+  name: string;
   yearAwarded: number;
-  category: { name: string; slug: string };
+  category: { name: string; slug: string } | null;
   chapter: { name: string; slug: string };
 };
 
@@ -29,7 +36,7 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-export default function Map({ snails }: { snails: MapSnail[] }) {
+export default function Map({ locations }: { locations: MapLocation[] }) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -45,17 +52,23 @@ export default function Map({ snails }: { snails: MapSnail[] }) {
 
     const markers = L.markerClusterGroup();
 
-    snails.forEach((snail) => {
-      if (!snail.latitude || !snail.longitude) return;
+    locations.forEach((loc) => {
+      if (!loc.latitude || !loc.longitude) return;
       const marker = L.marker(
-        [parseFloat(snail.latitude), parseFloat(snail.longitude)],
+        [parseFloat(loc.latitude), parseFloat(loc.longitude)],
         { icon: defaultIcon }
       );
+      // Name the site only when it isn't the snail's main one, so single-location
+      // snails read exactly as before.
+      const site = loc.isPrimary
+        ? ""
+        : `<br/><span style="color:#666">${loc.label || locationKindLabel(loc.kind)}</span>`;
       marker.bindPopup(
         `<div>
-          <strong><a href="/snails/${snail.slug}">${snail.name}</a></strong>
-          <br/><span style="color:#666">${snail.category?.name || ""} &middot; ${snail.chapter.name}</span>
-          ${snail.yearAwarded ? `<br/><span style="color:#999">Awarded ${snail.yearAwarded}</span>` : ""}
+          <strong><a href="/snails/${loc.slug}">${loc.name}</a></strong>${site}
+          <br/><span style="color:#666">${loc.category?.name || ""} &middot; ${loc.chapter.name}</span>
+          ${loc.address ? `<br/><span style="color:#999">${loc.address}</span>` : ""}
+          ${loc.yearAwarded ? `<br/><span style="color:#999">Awarded ${loc.yearAwarded}</span>` : ""}
         </div>`
       );
       markers.addLayer(marker);
@@ -63,7 +76,7 @@ export default function Map({ snails }: { snails: MapSnail[] }) {
 
     map.addLayer(markers);
 
-    if (snails.length > 0) {
+    if (locations.length > 0) {
       const bounds = markers.getBounds();
       if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [50, 50] });
@@ -74,7 +87,7 @@ export default function Map({ snails }: { snails: MapSnail[] }) {
       map.remove();
       mapRef.current = null;
     };
-  }, [snails]);
+  }, [locations]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 }

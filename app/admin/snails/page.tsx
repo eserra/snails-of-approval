@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
 
 type Snail = {
@@ -13,7 +14,6 @@ type Snail = {
   track: string;
   stage: string | null;
   formerAwardee: boolean;
-  establishmentType: string | null;
   onSfusaMap: boolean;
   assigneeId: number | null;
   chapter: { name: string };
@@ -24,17 +24,17 @@ type Snail = {
 type Tab = "leads" | "active" | "lapsed" | "all";
 
 const stageBadge: Record<string, string> = {
-  New: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
-  Contacted: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
-  Applied: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
-  Visited: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20",
-  Voted: "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
-  Onboarding: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-600/20",
-  Active: "bg-green-50 text-green-700 ring-1 ring-green-600/20",
-  "Renewal Due": "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
-  "Renewal Submitted": "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
-  Lapsed: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
-  Blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
+  new: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
+  contacted: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
+  applied: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+  visited: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-600/20",
+  board_review: "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
+  onboarding: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-600/20",
+  active: "bg-green-50 text-green-700 ring-1 ring-green-600/20",
+  renewal_due: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
+  renewal_submitted: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+  lapsed: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
+  blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
 };
 
 function matchesTab(snail: Snail, tab: Tab) {
@@ -44,11 +44,11 @@ function matchesTab(snail: Snail, tab: Tab) {
     case "leads":
       return (
         snail.track === "lead" &&
-        snail.stage !== "Lapsed" &&
-        snail.stage !== "Deferred"
+        snail.stage !== "lapsed" &&
+        snail.stage !== "deferred"
       );
     case "lapsed":
-      return snail.track === "lead" && snail.formerAwardee && snail.stage === "Lapsed";
+      return snail.track === "lead" && snail.formerAwardee && snail.stage === "lapsed";
     default:
       return true;
   }
@@ -105,10 +105,10 @@ export default function AdminSnailsPage() {
     .filter((s) => !notOnMapOnly || !s.onSfusaMap);
 
   const counts = {
-    leads: snails.filter((s) => s.track === "lead" && s.stage !== "Lapsed").length,
+    leads: snails.filter((s) => s.track === "lead" && s.stage !== "lapsed").length,
     active: snails.filter((s) => s.track === "active").length,
     lapsed: snails.filter(
-      (s) => s.track === "lead" && s.formerAwardee && s.stage === "Lapsed"
+      (s) => s.track === "lead" && s.formerAwardee && s.stage === "lapsed"
     ).length,
     all: snails.length,
   };
@@ -228,9 +228,6 @@ export default function AdminSnailsPage() {
                     SFUSA Category
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    SFNYC Legacy
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
                     Stage
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
@@ -273,15 +270,12 @@ export default function AdminSnailsPage() {
                         </>
                       ) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-gray-400">
-                      {snail.establishmentType || "—"}
-                    </td>
                     <td className="px-4 py-3">
                       {snail.stage && (
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${stageBadge[snail.stage] || "bg-gray-100 text-gray-600"}`}
                         >
-                          {snail.stage}
+                          {stageLabel(snail.stage)}
                         </span>
                       )}
                     </td>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import GmailConnectionStatus from "@/components/gmail/GmailConnectionStatus";
 
 type Chapter = {
@@ -12,6 +13,8 @@ type Chapter = {
 };
 
 export default function AdminChaptersPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,12 +81,14 @@ export default function AdminChaptersPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Chapters</h1>
-        <button
-          onClick={startNew}
-          className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
-        >
-          + Add Chapter
-        </button>
+        {isAdmin && (
+          <button
+            onClick={startNew}
+            className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
+          >
+            + Add Chapter
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -166,18 +171,22 @@ export default function AdminChaptersPage() {
                     <GmailConnectionStatus chapterId={ch.id} />
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <button
-                      onClick={() => startEdit(ch)}
-                      className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(ch.id, ch.name)}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => startEdit(ch)}
+                          className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(ch.id, ch.name)}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

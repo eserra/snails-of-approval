@@ -106,11 +106,39 @@ const nycSnails = [
 ];
 
 async function main() {
-  for (const snail of nycSnails) {
+  // Address and contact details are their own models; fold each seed row's flat
+  // fields into one main location and one general contact.
+  for (const { address, latitude, longitude, email, phone, ...snail } of nycSnails) {
     await prisma.snail.upsert({
       where: { slug: snail.slug },
       update: {},
-      create: snail,
+      create: {
+        ...snail,
+        locations: {
+          create: [
+            {
+              kind: "storefront",
+              address,
+              latitude,
+              longitude,
+              isPublic: true,
+              isPrimary: true,
+            },
+          ],
+        },
+        contacts: {
+          create: [
+            {
+              name: snail.name,
+              role: "general",
+              email,
+              phone,
+              isPublic: true,
+              isPrimary: true,
+            },
+          ],
+        },
+      },
     });
   }
   console.log(`Seeded ${nycSnails.length} NYC snails`);

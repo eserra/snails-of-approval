@@ -28,22 +28,79 @@ export async function POST(request: NextRequest) {
   const token = await getToken({ req: request });
   const body = await request.json();
 
+  // A snail must have someone to talk to and somewhere to point at. Checked before
+  // geocoding so a rejected request costs no Nominatim calls.
+  const hasContact =
+    Array.isArray(body.contacts) &&
+    body.contacts.some((c: { name?: string }) => c.name?.trim());
+  const hasLocation =
+    Array.isArray(body.locations) &&
+    body.locations.some((l: { address?: string }) => l.address?.trim());
+  if (!hasContact || !hasLocation) {
+    const missing = [
+      !hasContact ? "one contact" : null,
+      !hasLocation ? "one location" : null,
+    ].filter(Boolean);
+    return NextResponse.json(
+      { error: `A snail needs at least ${missing.join(" and ")}.` },
+      { status: 400 }
+    );
+  }
+
   let slug = slugify(body.name);
   const existing = await prisma.snail.findUnique({ where: { slug } });
   if (existing) {
     slug = `${slug}-${Date.now()}`;
   }
 
-  // Geocode if address provided and no coordinates
-  let latitude = body.latitude ? parseFloat(body.latitude) : null;
-  let longitude = body.longitude ? parseFloat(body.longitude) : null;
-  if (body.address && !latitude && !longitude) {
-    const coords = await geocodeAddress(body.address);
-    if (coords) {
-      latitude = coords.latitude;
-      longitude = coords.longitude;
+  // Build the inline locations, enforcing at most one main one (keep the first
+  // flagged), geocoding any that arrived without coordinates.
+  type LocationInput = {
+    label?: string;
+    kind?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    borough?: string;
+    zip?: string;
+    latitude?: string;
+    longitude?: string;
+    isPublic?: boolean;
+    isPrimary?: boolean;
+  };
+  let mainTaken = false;
+  const locationsCreate = [];
+  const submittedLocations: LocationInput[] = Array.isArray(body.locations)
+    ? body.locations.filter((l: LocationInput) => l.address?.trim())
+    : [];
+  for (const l of submittedLocations) {
+    let latitude = l.latitude ? parseFloat(l.latitude) : null;
+    let longitude = l.longitude ? parseFloat(l.longitude) : null;
+    if (!latitude && !longitude) {
+      const coords = await geocodeAddress(l.address!);
+      if (coords) {
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+      }
     }
+    const isPrimary = !!l.isPrimary && !mainTaken;
+    if (isPrimary) mainTaken = true;
+    locationsCreate.push({
+      label: l.label || null,
+      kind: l.kind || "storefront",
+      address: l.address!.trim(),
+      city: l.city || null,
+      state: l.state || null,
+      borough: l.borough || null,
+      zip: l.zip || null,
+      latitude,
+      longitude,
+      isPublic: l.isPublic !== false,
+      isPrimary,
+    });
   }
+  // A snail with locations but none flagged: the first one is the main one.
+  if (!mainTaken && locationsCreate.length) locationsCreate[0].isPrimary = true;
 
   // Build the inline contacts, enforcing at most one primary (keep the first flagged).
   let primaryTaken = false;
@@ -74,6 +131,8 @@ export async function POST(request: NextRequest) {
           }
         )
     : [];
+  // A snail with contacts but none flagged: the first one is the main one.
+  if (!primaryTaken && contactsCreate.length) contactsCreate[0].isPrimary = true;
 
   const snail = await prisma.snail.create({
     data: {
@@ -81,9 +140,6 @@ export async function POST(request: NextRequest) {
       name: body.name,
       yearAwarded: body.yearAwarded ? parseInt(body.yearAwarded) : null,
       description: body.description || null,
-      address: body.address || null,
-      latitude,
-      longitude,
       website: body.website || null,
       facebookUrl: body.facebookUrl || null,
       instagramUrl: body.instagramUrl || null,
@@ -101,10 +157,6 @@ export async function POST(request: NextRequest) {
       businessStatus: body.businessStatus || null,
       source: body.source || null,
       blockedReason: body.blockedReason || null,
-      city: body.city || null,
-      state: body.state || null,
-      borough: body.borough || null,
-      zip: body.zip || null,
       onSfusaMap: body.onSfusaMap || false,
 
       establishmentType: body.establishmentType || null,
@@ -114,8 +166,12 @@ export async function POST(request: NextRequest) {
       stickersDelivered: body.stickersDelivered || false,
       diversityTags: body.diversityTags || null,
       contacts: contactsCreate.length ? { create: contactsCreate } : undefined,
+      locations: locationsCreate.length ? { create: locationsCreate } : undefined,
     },
-    include: { contacts: { orderBy: { createdAt: "asc" } } },
+    include: {
+      contacts: { orderBy: { createdAt: "asc" } },
+      locations: { orderBy: { createdAt: "asc" } },
+    },
   });
 
   return NextResponse.json(snail, { status: 201 });

@@ -3,6 +3,7 @@ import { PrismaClient } from "../app/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as XLSX from "xlsx";
 import { slugify } from "../lib/slug.js";
+import { stages } from "../lib/pipeline-stages.js";
 import path from "path";
 
 const adapter = new PrismaPg({
@@ -85,17 +86,29 @@ async function main() {
     let track = "lead";
     if (rawAwardStatus?.includes("Active Awardee")) track = "active";
 
+    // Spreadsheet labels → machine-readable Snail.stage values (lib/pipeline-stages)
     let stage: string | null = null;
-    if (rawPipelineStage === "Active" || rawPipelineStage === "Awarded") stage = "Active";
-    else if (rawPipelineStage === "1 - Contacted") stage = "Contacted";
-    else if (rawPipelineStage === "Former") stage = "Lapsed";
-    else if (rawPipelineStage) stage = rawPipelineStage;
+    if (rawPipelineStage === "Active" || rawPipelineStage === "Awarded") stage = "active";
+    else if (rawPipelineStage === "1 - Contacted") stage = "contacted";
+    else if (rawPipelineStage === "Former") stage = "lapsed";
+    else if (rawPipelineStage) {
+      const match = stages.find(
+        (s) => s.label.toLowerCase() === rawPipelineStage.toLowerCase()
+      );
+      stage = match ? match.value : rawPipelineStage;
+    }
 
     // Fill in defaults
-    if (!stage && formerAwardee) stage = "Lapsed";
-    if (!stage && track === "lead") stage = "New";
-    if (!stage && track === "active") stage = "Active";
-    const businessStatus = str(row["Business Status"]);
+    if (!stage && formerAwardee) stage = "lapsed";
+    if (!stage && track === "lead") stage = "new";
+    if (!stage && track === "active") stage = "active";
+    // Spreadsheet labels → machine-readable Snail.businessStatus values
+    const rawBusinessStatus = str(row["Business Status"]);
+    const businessStatus =
+      rawBusinessStatus === "Confirmed - In Business" ? "active"
+      : rawBusinessStatus === "Permanently Closed" ? "permanently_closed"
+      : rawBusinessStatus === "TBC" ? "to_be_confirmed"
+      : rawBusinessStatus;
     const source = str(row["Source"]);
     const establishmentType = str(row["Establishment Type (SFNYC)"]);
     const borough = str(row["Borough"]);
@@ -159,7 +172,6 @@ async function main() {
       name,
       yearAwarded,
       description,
-      address,
       website,
       instagramUrl,
       status,
@@ -170,8 +182,6 @@ async function main() {
       businessStatus,
       source,
       blockedReason,
-      borough,
-      zip,
       onSfusaMap,
       establishmentType,
       assigneeId: assignee?.id || null,
@@ -194,6 +204,30 @@ async function main() {
       update: data,
       create: { slug, ...data },
     });
+
+    // Fold the spreadsheet's single address into the snail's main location.
+    // Re-run safe: only create if this snail has no location yet.
+    if (address || borough || zip) {
+      const snail = await prisma.snail.findUnique({ where: { slug } });
+      if (snail) {
+        const existingLocation = await prisma.location.findFirst({
+          where: { snailId: snail.id },
+        });
+        if (!existingLocation) {
+          await prisma.location.create({
+            data: {
+              kind: "storefront",
+              address,
+              borough,
+              zip,
+              isPublic: true,
+              isPrimary: true,
+              snailId: snail.id,
+            },
+          });
+        }
+      }
+    }
 
     // Fold the spreadsheet's single contact into a "general" contact row.
     // Re-run safe: only create if this snail has no general contact yet.

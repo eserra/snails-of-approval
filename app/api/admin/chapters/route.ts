@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
-import { requireWrite } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/rbac";
 
 export async function POST(request: NextRequest) {
-  const forbidden = await requireWrite(request);
+  const forbidden = await requireAdmin(request);
   if (forbidden) return forbidden;
 
   const body = await request.json();

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { geocodeAddress } from "@/lib/geocode";
 import { requireWrite } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -14,6 +13,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
       category: { select: { name: true } },
       assignee: { select: { id: true, name: true } },
       contacts: { orderBy: { createdAt: "asc" } },
+      locations: { orderBy: { createdAt: "asc" } },
       notes: {
         orderBy: { createdAt: "desc" },
         include: { author: { select: { name: true } } },
@@ -46,7 +46,6 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 
   set("name", body.name);
   set("description", body.description || null);
-  set("address", body.address || null);
   set("website", body.website || null);
   set("facebookUrl", body.facebookUrl || null);
   set("instagramUrl", body.instagramUrl || null);
@@ -54,10 +53,6 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("photoUrl", body.photoUrl || null);
   set("status", body.status || "draft");
   set("establishmentType", body.establishmentType || null);
-  set("city", body.city || null);
-  set("state", body.state || null);
-  set("borough", body.borough || null);
-  set("zip", body.zip || null);
   set("diversityTags", body.diversityTags || null);
   set("source", body.source || null);
   set("blockedReason", body.blockedReason || null);
@@ -99,21 +94,6 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     data.lastTouchDate = body.lastTouchDate
       ? new Date(body.lastTouchDate)
       : null;
-
-  // Geocode if address changed and no manual coordinates
-  if ("address" in body) {
-    let latitude = body.latitude ? parseFloat(body.latitude) : null;
-    let longitude = body.longitude ? parseFloat(body.longitude) : null;
-    if (body.address && !latitude && !longitude) {
-      const coords = await geocodeAddress(body.address);
-      if (coords) {
-        latitude = coords.latitude;
-        longitude = coords.longitude;
-      }
-    }
-    data.latitude = latitude;
-    data.longitude = longitude;
-  }
 
   const snail = await prisma.snail.update({
     where: { id: parseInt(id) },

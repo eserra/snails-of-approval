@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { pipelineStages } from "@/lib/stage-requirements";
+import { pipelineStages } from "@/lib/pipeline-stages";
 
 export async function GET() {
   try {
@@ -20,15 +20,15 @@ export async function GET() {
       .filter((g) => g.track === "active")
       .reduce((sum, g) => sum + g._count, 0);
 
-    // Lapsed: track = "lead", stage = "Lapsed"
-    const lapsedCount = lookup.get("lead|Lapsed") ?? 0;
+    // Lapsed: track = "lead", stage = "lapsed"
+    const lapsedCount = lookup.get("lead|lapsed") ?? 0;
 
-    // Deferred: track = "lead", stage = "Deferred" (board rejected, may reapply)
-    const deferredCount = lookup.get("lead|Deferred") ?? 0;
+    // Deferred: track = "lead", stage = "deferred" (board rejected, may reapply)
+    const deferredCount = lookup.get("lead|deferred") ?? 0;
 
-    // Blocked: any track with stage = "Blocked"
+    // Blocked: any track with stage = "blocked"
     const blockedCount = groups
-      .filter((g) => g.stage === "Blocked")
+      .filter((g) => g.stage === "blocked")
       .reduce((sum, g) => sum + g._count, 0);
 
     // Lead funnel in pipeline order

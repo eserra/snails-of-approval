@@ -15,6 +15,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
       chapter: { select: { name: true, state: true } },
       category: { select: { name: true, parent: { select: { name: true } } } },
       contacts: true,
+      locations: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!snail) {
@@ -26,6 +27,10 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   const primary = snail.contacts.find((c) => c.isPrimary) ?? snail.contacts[0];
   const phone = primary?.phone || snail.contacts.find((c) => c.phone)?.phone || null;
   const email = primary?.email || snail.contacts.find((c) => c.email)?.email || null;
+
+  // The map takes a single address: the main location, falling back to the first.
+  const location =
+    snail.locations.find((l) => l.isPrimary) ?? snail.locations[0] ?? null;
 
   // The form's "Type of Business" is the top-level category (our category may be a
   // subtype, so use its parent's name when present).
@@ -45,12 +50,12 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     phone,
     phoneVanity: primary?.phoneVanity ?? null,
     email,
-    streetAddress: snail.address,
-    city: snail.city,
-    state: snail.state || snail.chapter?.state || null,
-    postalCode: snail.zip,
-    latitude: snail.latitude != null ? String(snail.latitude) : null,
-    longitude: snail.longitude != null ? String(snail.longitude) : null,
+    streetAddress: location?.address ?? null,
+    city: location?.city ?? null,
+    state: location?.state || snail.chapter?.state || null,
+    postalCode: location?.zip ?? null,
+    latitude: location?.latitude != null ? String(location.latitude) : null,
+    longitude: location?.longitude != null ? String(location.longitude) : null,
     description: snail.description,
   });
 

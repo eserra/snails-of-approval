@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import PipelineProgress from "./PipelineProgress";
 import DetailSection, { type EditFormProps } from "./DetailSection";
 import FileUpload from "./FileUpload";
-import AddressAutocomplete from "./AddressAutocomplete";
+import AddressAutocomplete, { type SearchBias } from "./AddressAutocomplete";
 import EmailList from "./gmail/EmailList";
 import ComposeEmail from "./gmail/ComposeEmail";
 import { attachmentConfig } from "@/lib/attachment-config";
@@ -15,6 +15,9 @@ import {
   serializeDiversityTags,
 } from "@/lib/diversity-tags";
 import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
+import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
+import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
+import { stageLabel, hasRecommendationStage } from "@/lib/pipeline-stages";
 
 /* ── shared types ── */
 
@@ -29,6 +32,21 @@ type ContactData = {
   isPrimary: boolean;
 };
 
+type LocationData = {
+  id: number;
+  label: string | null;
+  kind: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  borough: string | null;
+  zip: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  isPublic: boolean;
+  isPrimary: boolean;
+};
+
 type SnailData = Record<string, unknown> & {
   id: number;
   name: string;
@@ -39,6 +57,7 @@ type SnailData = Record<string, unknown> & {
   category: { name: string; parent: { name: string } | null } | null;
   assignee: { name: string } | null;
   contacts: ContactData[];
+  locations: LocationData[];
   notes: {
     id: number;
     content: string;
@@ -57,7 +76,7 @@ type SnailData = Record<string, unknown> & {
   }[];
 };
 
-type Chapter = { id: number; name: string };
+type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
 type Category = { id: number; name: string; parentId: number | null };
 type UserOption = { id: number; name: string };
 
@@ -91,6 +110,49 @@ function ChecklistItem({ done, label, hint }: { done: boolean; label: string; hi
       <span className={done ? "text-gray-900" : "text-gray-400"}>{label}</span>
       {hint && <span className="text-xs text-amber-600">({hint})</span>}
     </li>
+  );
+}
+
+const STAR_PATH =
+  "M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.404 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z";
+
+/**
+ * Marks the one contact/location a snail treats as its main, and promotes another
+ * when clicked. The main one's star isn't clickable — a snail always has exactly
+ * one, so the way to move it is to click a different row's star, never to unset
+ * this one. Both states occupy the same slot so rows line up either way.
+ */
+function MainStar({ on, label, onPromote, busy }: {
+  on: boolean;
+  label: string;
+  onPromote: () => void;
+  busy: boolean;
+}) {
+  const star = (
+    <svg className="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d={STAR_PATH} />
+    </svg>
+  );
+
+  if (on) {
+    return (
+      <span className="size-4 shrink-0 mt-0.5 text-amber-500" role="img" aria-label={label} title={label}>
+        {star}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onPromote}
+      disabled={busy}
+      aria-label={`Make this the ${label.toLowerCase()}`}
+      title={`Make this the ${label.toLowerCase()}`}
+      className="size-4 shrink-0 mt-0.5 text-gray-300 hover:text-amber-400 disabled:opacity-50 transition-colors cursor-pointer"
+    >
+      {star}
+    </button>
   );
 }
 
@@ -167,18 +229,35 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
     track: snail.track,
     stage: snail.stage || "",
     blockedReason: (snail.blockedReason as string) || "",
-    recommendation: (snail.recommendation as string) || "",
   });
-  const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Deferred", "Blocked"];
-  const activeStages = ["Onboarding", "Active", "Renewal Due", "Renewal Submitted", "Blocked"];
+  const leadStages = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "deferred", "blocked"];
+  const activeStages = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "New" : "Onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
-        <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{s}</option>))}</select></div>
-        {f.stage === "Blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
-        <div className="sm:col-span-2"><label className={labelClass}>SOA team recommendation (to the board)</label><textarea rows={3} value={f.recommendation} onChange={(e) => setF({ ...f, recommendation: e.target.value })} className={inputClass} placeholder="Summary and recommendation for the board vote" /></div>
+        <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "new" : "onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
+        <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{stageLabel(s)}</option>))}</select></div>
+        {f.stage === "blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
       </div>
+      <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
+function RecommendationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
+  const [f, setF] = useState({
+    recommendation: (snail.recommendation as string) || "",
+  });
+  return (
+    <div className="space-y-4">
+      <label className={labelClass}>What the committee is telling the board</label>
+      <textarea
+        rows={6}
+        value={f.recommendation}
+        onChange={(e) => setF({ recommendation: e.target.value })}
+        className={inputClass}
+        placeholder="What the committee found on the application and the site visit, and what it recommends the board do."
+      />
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -197,7 +276,7 @@ function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.formerAwardee} onChange={(e) => setF({ ...f, formerAwardee: e.target.checked })} className={checkboxClass} id="fa-edit" /><label htmlFor="fa-edit" className="text-sm text-gray-700">Former Awardee</label></div>
         {f.formerAwardee && <div><label className={labelClass}>Year (First) Awarded</label><input type="number" value={f.yearAwarded} onChange={(e) => setF({ ...f, yearAwarded: e.target.value })} className={inputClass} /></div>}
         <div><label className={labelClass}>Source</label><input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Confirmed - In Business">Confirmed - In Business</option><option value="TBC">TBC</option></select></div>
+        <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option>{businessStatuses.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
@@ -229,6 +308,20 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
 const emptyContactForm = { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false };
 type ContactFormState = typeof emptyContactForm;
 
+/** Editor state for an existing contact. Re-derived every time the editor opens so
+ *  it can't show a flag another row has since taken over. */
+function contactForm(c: ContactData): ContactFormState {
+  return {
+    name: c.name,
+    role: c.role,
+    email: c.email || "",
+    phone: c.phone || "",
+    phoneVanity: c.phoneVanity || "",
+    isPublic: c.isPublic,
+    isPrimary: c.isPrimary,
+  };
+}
+
 function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactFormState) => void }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -256,23 +349,24 @@ function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactForm
   );
 }
 
-function ContactRow({ contact, snailId, onChange, onRemove }: {
+function ContactRow({ contact, snailId, onList }: {
   contact: ContactData;
   snailId: number;
-  onChange: (c: ContactData) => void;
-  onRemove: (id: number) => void;
+  /** Every mutation answers with the snail's full contact list; the section just takes it. */
+  onList: (list: ContactData[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [f, setF] = useState<ContactFormState>({
-    name: contact.name,
-    role: contact.role,
-    email: contact.email || "",
-    phone: contact.phone || "",
-    phoneVanity: contact.phoneVanity || "",
-    isPublic: contact.isPublic,
-    isPrimary: contact.isPrimary,
-  });
+  const [error, setError] = useState("");
+  const [f, setF] = useState<ContactFormState>(() => contactForm(contact));
+
+  // Seeding once would leave the editor showing whatever was true when the row
+  // first rendered — including a Main flag another contact has since taken.
+  function startEditing() {
+    setF(contactForm(contact));
+    setError("");
+    setEditing(true);
+  }
 
   async function save() {
     if (!f.name.trim()) return;
@@ -284,21 +378,50 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
     });
     setSaving(false);
     if (res.ok) {
-      onChange(await res.json());
+      onList(await res.json());
       setEditing(false);
+      setError("");
+      return;
     }
+    // e.g. refusing to unset the snail's only main contact.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to save contact");
+  }
+
+  async function promote() {
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPrimary: true }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onList(await res.json());
+      setError("");
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to set the main contact");
   }
 
   async function remove() {
     if (!confirm(`Remove contact "${contact.name}"?`)) return;
     const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, { method: "DELETE" });
-    if (res.ok) onRemove(contact.id);
+    if (res.ok) {
+      onList(await res.json());
+      return;
+    }
+    // The server refuses to remove a snail's last contact.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to remove contact");
   }
 
   if (editing) {
     return (
       <div className="border border-gray-200 rounded-lg p-3 space-y-3">
         <ContactFields f={f} setF={setF} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
       </div>
     );
@@ -306,11 +429,12 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
 
   return (
     <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
-      <div>
+      <div className="flex items-start gap-1.5">
+        <MainStar on={contact.isPrimary} label="Main contact" onPromote={promote} busy={saving} />
+        <div>
         <p className="text-sm font-medium text-gray-900">
           {contact.name}
           <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
-          {contact.isPrimary && <span className="ml-2 text-xs font-normal text-amber-700">Main</span>}
           {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
         </p>
         <p className="text-xs text-gray-600 mt-0.5">
@@ -319,10 +443,14 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
           {contact.phone && <span>{contact.phone}{contact.phoneVanity ? ` (${contact.phoneVanity})` : ""}</span>}
           {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
         </p>
+        </div>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
-        <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex gap-2">
+          <button type="button" onClick={startEditing} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+        </div>
+        {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
       </div>
     </div>
   );
@@ -344,8 +472,7 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
     });
     setSaving(false);
     if (res.ok) {
-      const created = await res.json();
-      setContacts((prev) => [...prev, created]);
+      setContacts(await res.json());
       setF(emptyContactForm);
       setAdding(false);
     }
@@ -378,8 +505,7 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
               key={c.id}
               contact={c}
               snailId={snailId}
-              onChange={(updated) => setContacts((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
-              onRemove={(id) => setContacts((prev) => prev.filter((x) => x.id !== id))}
+              onList={setContacts}
             />
           ))}
         </div>
@@ -388,28 +514,249 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
   );
 }
 
-function LocationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
-  const [f, setF] = useState({
-    address: (snail.address as string) || "",
-    city: (snail.city as string) || "",
-    state: (snail.state as string) || "",
-    borough: (snail.borough as string) || "",
-    zip: (snail.zip as string) || "",
-    latitude: snail.latitude ? String(snail.latitude) : "",
-    longitude: snail.longitude ? String(snail.longitude) : "",
-  });
+/* ── locations section (its own CRUD against /api/admin/snails/[id]/locations) ── */
+
+const emptyLocationForm = { label: "", kind: "storefront", address: "", city: "", state: "", borough: "", zip: "", latitude: "", longitude: "", isPublic: true, isPrimary: false };
+type LocationFormState = typeof emptyLocationForm;
+
+/** Editor state for an existing location. Re-derived every time the editor opens so
+ *  it can't show a flag another row has since taken over. */
+function locationForm(l: LocationData): LocationFormState {
+  return {
+    label: l.label || "",
+    kind: l.kind,
+    address: l.address || "",
+    city: l.city || "",
+    state: l.state || "",
+    borough: l.borough || "",
+    zip: l.zip || "",
+    latitude: l.latitude ? String(l.latitude) : "",
+    longitude: l.longitude ? String(l.longitude) : "",
+    isPublic: l.isPublic,
+    isPrimary: l.isPrimary,
+  };
+}
+
+function LocationFields({ f, setF, bias }: { f: LocationFormState; setF: (f: LocationFormState) => void; bias: SearchBias | null }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={labelClass}>Address</label><AddressAutocomplete value={f.address} onChange={(addr, lat, lon) => setF({ ...f, address: addr, ...(lat && lon ? { latitude: lat, longitude: lon } : {}) })} className={inputClass} placeholder="Start typing to search..." /></div>
-        <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Borough</label><select value={f.borough} onChange={(e) => setF({ ...f, borough: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Manhattan">Manhattan</option><option value="Brooklyn">Brooklyn</option><option value="Queens">Queens</option><option value="The Bronx">The Bronx</option><option value="Staten Island">Staten Island</option><option value="Other">Other</option></select></div>
-        <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Longitude</label><input value={f.longitude} onChange={(e) => setF({ ...f, longitude: e.target.value })} className={inputClass} /></div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label className={labelClass}>Address *</label>
+        <AddressAutocomplete
+          value={f.address}
+          bias={bias}
+          onChange={(addr) => setF({ ...f, address: addr })}
+          // Picking a suggestion fills the whole address block, not just the street.
+          onSelect={(r) => setF({
+            ...f,
+            address: r.address,
+            city: r.city,
+            state: r.state,
+            zip: r.zip,
+            // Boroughs only apply to NYC; leave whatever is there otherwise.
+            borough: r.borough || f.borough,
+            latitude: r.latitude,
+            longitude: r.longitude,
+          })}
+          className={inputClass}
+          placeholder="Start typing to search..."
+        />
       </div>
-      <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+      <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
+      <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
+      <div>
+        <label className={labelClass}>Borough</label>
+        <select value={f.borough} onChange={(e) => setF({ ...f, borough: e.target.value })} className={`${inputClass} bg-white`}>
+          <option value="">Select...</option>
+          {boroughs.map((b) => (<option key={b} value={b}>{b}</option>))}
+        </select>
+      </div>
+      <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
+      <div>
+        <label className={labelClass}>Type</label>
+        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className={`${inputClass} bg-white`}>
+          {locationKinds.map((k) => (<option key={k.value} value={k.value}>{k.label}</option>))}
+        </select>
+      </div>
+      <div><label className={labelClass}>Label <span className="text-gray-400 font-normal">(optional)</span></label><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Union Square stall" className={inputClass} /></div>
+      <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
+      <div><label className={labelClass}>Longitude</label><input value={f.longitude} onChange={(e) => setF({ ...f, longitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
+      <div className="sm:col-span-2 space-y-2">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPrimary} onChange={(e) => setF({ ...f, isPrimary: e.target.checked })} className={checkboxClass} />
+          Main location (address used for submissions)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} className={checkboxClass} />
+          Show on the public map and page
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function LocationRow({ location, snailId, bias, onList }: {
+  location: LocationData;
+  snailId: number;
+  bias: SearchBias | null;
+  /** Every mutation answers with the snail's full location list; the section just takes it. */
+  onList: (list: LocationData[]) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [f, setF] = useState<LocationFormState>(() => locationForm(location));
+
+  // Seeding once would leave the editor showing whatever was true when the row
+  // first rendered — including a Main flag another location has since taken.
+  function startEditing() {
+    setF(locationForm(location));
+    setError("");
+    setEditing(true);
+  }
+
+  async function save() {
+    if (!f.address.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(f),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onList(await res.json());
+      setEditing(false);
+      setError("");
+      return;
+    }
+    // e.g. refusing to unset the snail's only main location.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to save location");
+  }
+
+  async function promote() {
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPrimary: true }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onList(await res.json());
+      setError("");
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to set the main location");
+  }
+
+  async function remove() {
+    if (!confirm(`Remove location "${location.address}"?`)) return;
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, { method: "DELETE" });
+    if (res.ok) {
+      onList(await res.json());
+      return;
+    }
+    // The server refuses to remove a snail's last location.
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to remove location");
+  }
+
+  if (editing) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+        <LocationFields f={f} setF={setF} bias={bias} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+      <div className="flex items-start gap-1.5">
+        <MainStar on={location.isPrimary} label="Main location" onPromote={promote} busy={saving} />
+        <div>
+        <p className="text-sm font-medium text-gray-900">
+          {location.label || location.address}
+          <span className="ml-2 text-xs font-normal text-gray-500">{locationKindLabel(location.kind)}</span>
+          {location.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
+        </p>
+        <p className="text-xs text-gray-600 mt-0.5">
+          {location.label && <span>{location.address}<span className="mx-1.5 text-gray-300">&middot;</span></span>}
+          {[location.city, location.borough, location.state, location.zip].filter(Boolean).join(", ") || <span className="text-gray-400">No city or ZIP</span>}
+          {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
+        </p>
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <div className="flex gap-2">
+          <button type="button" onClick={startEditing} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+          <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+        </div>
+        {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function LocationsSection({ snailId, initial, bias }: { snailId: number; initial: LocationData[]; bias: SearchBias | null }) {
+  const [locations, setLocations] = useState<LocationData[]>(initial);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<LocationFormState>(emptyLocationForm);
+
+  async function add() {
+    if (!f.address.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...f, isPrimary: f.isPrimary || locations.length === 0 }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setLocations(await res.json());
+      setF(emptyLocationForm);
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-900">Locations</h2>
+        {!adding && (
+          <button type="button" onClick={() => setAdding(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">
+            + Add Location
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+          <LocationFields f={f} setF={setF} bias={bias} />
+          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyLocationForm); }} saving={saving} />
+        </div>
+      )}
+
+      {locations.length === 0 && !adding ? (
+        <p className="text-sm text-gray-400">No locations yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {locations.map((l) => (
+            <LocationRow
+              key={l.id}
+              location={l}
+              snailId={snailId}
+              bias={bias}
+              onList={setLocations}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -443,6 +790,8 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
     pressReleaseSent: snail.pressReleaseSent as boolean,
     socialAnnounced: snail.socialAnnounced as boolean,
   });
+  // Award-package fields belong to awardees, not leads.
+  const isActive = snail.track === "active";
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -450,6 +799,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
         <div><label className={labelClass}>Last Touch Date</label><input type="date" value={f.lastTouchDate} onChange={(e) => setF({ ...f, lastTouchDate: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
       </div>
+      {isActive && (
       <fieldset className="rounded-lg border border-gray-200 p-3">
         <legend className="px-1 text-xs font-semibold text-gray-500">Award package</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -460,6 +810,8 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
           <div className="sm:col-span-2"><label className={labelClass}>Certificate requested (allow ~1 week)</label><input type="date" value={f.certificateRequestedDate} onChange={(e) => setF({ ...f, certificateRequestedDate: e.target.value })} className={inputClass} /></div>
         </div>
       </fieldset>
+      )}
+      {isActive && (
       <fieldset className="rounded-lg border border-gray-200 p-3">
         <legend className="px-1 text-xs font-semibold text-gray-500">Announcement</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -467,6 +819,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
           <div className="flex items-center gap-2"><input type="checkbox" checked={f.socialAnnounced} onChange={(e) => setF({ ...f, socialAnnounced: e.target.checked })} className={checkboxClass} id="so-edit" /><label htmlFor="so-edit" className="text-sm text-gray-700">Announced on social</label></div>
         </div>
       </fieldset>
+      )}
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -484,6 +837,20 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [addingNote, setAddingNote] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  // Award-package fields belong to awardees, not leads.
+  const isActive = snail.track === "active";
+  // Search around this snail's own address when it has one, else its chapter.
+  const located =
+    snail.locations.find((l) => l.isPrimary && l.latitude) ??
+    snail.locations.find((l) => l.latitude);
+  const searchBias: SearchBias | null = located?.latitude
+    ? { lat: Number(located.latitude), lon: Number(located.longitude) }
+    : (chapters.find((c) => c.id === snail.chapterId)?.centroid ?? null);
+  const showRecommendation = hasRecommendationStage(
+    snail.track,
+    snail.stage,
+    snail.recommendation as string | null
+  );
 
   useEffect(() => {
     Promise.all([
@@ -525,6 +892,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         track={snail.track}
         currentStage={snail.stage || ""}
         attachments={attachments.map((a) => ({ category: a.category }))}
+        recommendation={snail.recommendation as string | null}
         snailId={snail.id}
         onStageChange={() => window.location.reload()}
       />
@@ -560,12 +928,36 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         </dl>
       </DetailSection>
 
+      {/* Links */}
+      <DetailSection title="Links" snailId={snail.id} EditForm={(props) => <LinksEditForm {...props} snail={snail} />}>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Other Social" value={snail.otherSocial as string} />
+        </dl>
+      </DetailSection>
+
+      {/* Contacts */}
+      <ContactsSection snailId={snail.id} initial={snail.contacts} />
+
+      {/* Locations */}
+      <LocationsSection snailId={snail.id} initial={snail.locations} bias={searchBias} />
+
+      {/* Map & Visibility */}
+      <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <Field label="SFNYC Map" value={<span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${snail.status === "published" ? "bg-green-50 text-green-700 ring-1 ring-green-600/20" : "bg-gray-100 text-gray-600"}`}>{snail.status === "published" ? "Published" : "Draft"}</span>} />
+          <Field label="SFUSA Map" value={snail.onSfusaMap ? "Yes" : "No"} />
+        </dl>
+      </DetailSection>
+
       {/* Pipeline */}
       <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
-          <Field label="Stage" value={snail.stage} />
-          {snail.stage === "Blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
+          <Field label="Stage" value={stageLabel(snail.stage as string | null)} />
+          {snail.stage === "blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
           {snail.boardDecision ? (
             <Field
               label="Board decision"
@@ -577,12 +969,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
               }
             />
           ) : null}
-          {snail.recommendation ? (
-            <div className="sm:col-span-2">
-              <dt className="text-xs text-gray-500">Recommendation to board</dt>
-              <dd className="text-sm text-gray-900 mt-0.5 whitespace-pre-wrap">{snail.recommendation as string}</dd>
-            </div>
-          ) : null}
         </dl>
       </DetailSection>
 
@@ -591,40 +977,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         <dl className="grid gap-2 sm:grid-cols-2">
           {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
           <Field label="Source" value={snail.source as string} />
-          <Field label="Business Status" value={snail.businessStatus as string} />
-        </dl>
-      </DetailSection>
-
-      {/* Contacts */}
-      <ContactsSection snailId={snail.id} initial={snail.contacts} />
-
-      {/* Links */}
-      <DetailSection title="Links" snailId={snail.id} EditForm={(props) => <LinksEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Other Social" value={snail.otherSocial as string} />
-        </dl>
-      </DetailSection>
-
-      {/* Location */}
-      <DetailSection title="Location" snailId={snail.id} EditForm={(props) => <LocationEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="Address" value={snail.address as string} />
-          <Field label="City" value={snail.city as string} />
-          <Field label="State" value={snail.state as string} />
-          <Field label="Borough" value={snail.borough as string} />
-          <Field label="ZIP" value={snail.zip as string} />
-          {snail.latitude ? <Field label="Coordinates" value={`${snail.latitude}, ${snail.longitude}`} /> : null}
-        </dl>
-      </DetailSection>
-
-      {/* Map & Visibility */}
-      <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="SFNYC Map" value={<span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${snail.status === "published" ? "bg-green-50 text-green-700 ring-1 ring-green-600/20" : "bg-gray-100 text-gray-600"}`}>{snail.status === "published" ? "Published" : "Draft"}</span>} />
-          <Field label="SFUSA Map" value={snail.onSfusaMap ? "Yes" : "No"} />
+          <Field label="Business Status" value={businessStatusLabel(snail.businessStatus as string | null)} />
         </dl>
       </DetailSection>
 
@@ -635,6 +988,9 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
           <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
         </dl>
+        {/* The award package and its announcement only exist once the board has
+            approved and the snail is an active awardee. */}
+        {isActive && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Award package</span>
@@ -653,6 +1009,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
             />
           </ul>
         </div>
+        )}
+        {isActive && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <span className="mb-1.5 block text-xs font-semibold text-gray-500">Announcement</span>
           <ul className="grid gap-1 sm:grid-cols-2">
@@ -660,6 +1018,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
             <ChecklistItem done={snail.socialAnnounced as boolean} label="Announced on social" />
           </ul>
         </div>
+        )}
       </DetailSection>
 
       {/* Attachments */}
@@ -669,6 +1028,19 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <FileUpload key={category} snailId={snail.id} category={category} label={config.label} maxCount={config.maxCount} attachments={attachments.filter((a) => a.category === category)} onUpload={(a) => setAttachments((prev) => [a, ...prev])} onDelete={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))} />
         ))}
       </div>
+
+      {/* Committee recommendation — only once a snail is far enough along to have one */}
+      {showRecommendation && (
+        <DetailSection title="Committee recommendation" snailId={snail.id} EditForm={(props) => <RecommendationEditForm {...props} snail={snail} />}>
+          {snail.recommendation ? (
+            <p className="text-sm text-gray-900 whitespace-pre-wrap">{snail.recommendation as string}</p>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Not written yet — the board needs this before it can vote.
+            </p>
+          )}
+        </DetailSection>
+      )}
 
       {/* Notes */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
