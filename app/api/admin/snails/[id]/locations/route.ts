@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
+import { listLocations } from "@/lib/snail-relations";
 import { geocodeAddress } from "@/lib/geocode";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const locations = await prisma.location.findMany({
-    where: { snailId: parseInt(id) },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
-  return NextResponse.json(locations);
+  return NextResponse.json(await listLocations(parseInt(id)));
 }
 
 export async function POST(request: NextRequest, { params }: Ctx) {
@@ -36,7 +33,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   }
 
   const snailId = parseInt(id);
-  const location = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     // Exactly one main location per snail: the first one added is always it, and
     // flagging a new one demotes the incumbent.
     const isFirst = (await tx.location.count({ where: { snailId } })) === 0;
@@ -65,5 +62,5 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     });
   });
 
-  return NextResponse.json(location, { status: 201 });
+  return NextResponse.json(await listLocations(snailId), { status: 201 });
 }

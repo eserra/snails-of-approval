@@ -112,6 +112,49 @@ function ChecklistItem({ done, label, hint }: { done: boolean; label: string; hi
   );
 }
 
+const STAR_PATH =
+  "M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.404 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z";
+
+/**
+ * Marks the one contact/location a snail treats as its main, and promotes another
+ * when clicked. The main one's star isn't clickable — a snail always has exactly
+ * one, so the way to move it is to click a different row's star, never to unset
+ * this one. Both states occupy the same slot so rows line up either way.
+ */
+function MainStar({ on, label, onPromote, busy }: {
+  on: boolean;
+  label: string;
+  onPromote: () => void;
+  busy: boolean;
+}) {
+  const star = (
+    <svg className="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d={STAR_PATH} />
+    </svg>
+  );
+
+  if (on) {
+    return (
+      <span className="size-4 shrink-0 mt-0.5 text-amber-500" role="img" aria-label={label} title={label}>
+        {star}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onPromote}
+      disabled={busy}
+      aria-label={`Make this the ${label.toLowerCase()}`}
+      title={`Make this the ${label.toLowerCase()}`}
+      className="size-4 shrink-0 mt-0.5 text-gray-300 hover:text-amber-400 disabled:opacity-50 transition-colors cursor-pointer"
+    >
+      {star}
+    </button>
+  );
+}
+
 function SaveCancel({ onSave, onCancel, saving }: { onSave: () => void; onCancel: () => void; saving: boolean }) {
   return (
     <div className="flex gap-2 mt-4">
@@ -288,11 +331,11 @@ function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactForm
   );
 }
 
-function ContactRow({ contact, snailId, onChange, onRemove }: {
+function ContactRow({ contact, snailId, onList }: {
   contact: ContactData;
   snailId: number;
-  onChange: (c: ContactData) => void;
-  onRemove: (id: number) => void;
+  /** Every mutation answers with the snail's full contact list; the section just takes it. */
+  onList: (list: ContactData[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -317,7 +360,7 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
     });
     setSaving(false);
     if (res.ok) {
-      onChange(await res.json());
+      onList(await res.json());
       setEditing(false);
       setError("");
       return;
@@ -327,11 +370,28 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
     setError(data.error || "Failed to save contact");
   }
 
+  async function promote() {
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPrimary: true }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onList(await res.json());
+      setError("");
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to set the main contact");
+  }
+
   async function remove() {
     if (!confirm(`Remove contact "${contact.name}"?`)) return;
     const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, { method: "DELETE" });
     if (res.ok) {
-      onRemove(contact.id);
+      onList(await res.json());
       return;
     }
     // The server refuses to remove a snail's last contact.
@@ -351,11 +411,12 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
 
   return (
     <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
-      <div>
+      <div className="flex items-start gap-1.5">
+        <MainStar on={contact.isPrimary} label="Main contact" onPromote={promote} busy={saving} />
+        <div>
         <p className="text-sm font-medium text-gray-900">
           {contact.name}
           <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
-          {contact.isPrimary && <span className="ml-2 text-xs font-normal text-amber-700">Main</span>}
           {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
         </p>
         <p className="text-xs text-gray-600 mt-0.5">
@@ -364,6 +425,7 @@ function ContactRow({ contact, snailId, onChange, onRemove }: {
           {contact.phone && <span>{contact.phone}{contact.phoneVanity ? ` (${contact.phoneVanity})` : ""}</span>}
           {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
         </p>
+        </div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex gap-2">
@@ -392,8 +454,7 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
     });
     setSaving(false);
     if (res.ok) {
-      const created = await res.json();
-      setContacts((prev) => [...prev, created]);
+      setContacts(await res.json());
       setF(emptyContactForm);
       setAdding(false);
     }
@@ -426,8 +487,7 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
               key={c.id}
               contact={c}
               snailId={snailId}
-              onChange={(updated) => setContacts((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
-              onRemove={(id) => setContacts((prev) => prev.filter((x) => x.id !== id))}
+              onList={setContacts}
             />
           ))}
         </div>
@@ -516,11 +576,11 @@ function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationF
   );
 }
 
-function LocationRow({ location, snailId, onChange, onRemove }: {
+function LocationRow({ location, snailId, onList }: {
   location: LocationData;
   snailId: number;
-  onChange: (l: LocationData) => void;
-  onRemove: (id: number) => void;
+  /** Every mutation answers with the snail's full location list; the section just takes it. */
+  onList: (list: LocationData[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -545,7 +605,7 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
     });
     setSaving(false);
     if (res.ok) {
-      onChange(await res.json());
+      onList(await res.json());
       setEditing(false);
       setError("");
       return;
@@ -555,11 +615,28 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
     setError(data.error || "Failed to save location");
   }
 
+  async function promote() {
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPrimary: true }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onList(await res.json());
+      setError("");
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to set the main location");
+  }
+
   async function remove() {
     if (!confirm(`Remove location "${location.address}"?`)) return;
     const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, { method: "DELETE" });
     if (res.ok) {
-      onRemove(location.id);
+      onList(await res.json());
       return;
     }
     // The server refuses to remove a snail's last location.
@@ -579,11 +656,12 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
 
   return (
     <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
-      <div>
+      <div className="flex items-start gap-1.5">
+        <MainStar on={location.isPrimary} label="Main location" onPromote={promote} busy={saving} />
+        <div>
         <p className="text-sm font-medium text-gray-900">
           {location.label || location.address}
           <span className="ml-2 text-xs font-normal text-gray-500">{locationKindLabel(location.kind)}</span>
-          {location.isPrimary && <span className="ml-2 text-xs font-normal text-amber-700">Main</span>}
           {location.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
         </p>
         <p className="text-xs text-gray-600 mt-0.5">
@@ -591,6 +669,7 @@ function LocationRow({ location, snailId, onChange, onRemove }: {
           {[location.city, location.borough, location.state, location.zip].filter(Boolean).join(", ") || <span className="text-gray-400">No city or ZIP</span>}
           {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
         </p>
+        </div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex gap-2">
@@ -619,13 +698,7 @@ function LocationsSection({ snailId, initial }: { snailId: number; initial: Loca
     });
     setSaving(false);
     if (res.ok) {
-      const created = await res.json();
-      // The server demotes the others when this one is the new main location.
-      setLocations((prev) =>
-        created.isPrimary
-          ? [...prev.map((l) => ({ ...l, isPrimary: false })), created]
-          : [...prev, created]
-      );
+      setLocations(await res.json());
       setF(emptyLocationForm);
       setAdding(false);
     }
@@ -658,19 +731,7 @@ function LocationsSection({ snailId, initial }: { snailId: number; initial: Loca
               key={l.id}
               location={l}
               snailId={snailId}
-              onChange={(updated) =>
-                setLocations((prev) =>
-                  prev.map((x) =>
-                    x.id === updated.id
-                      ? updated
-                      : // Only one location can be the main one.
-                        updated.isPrimary
-                        ? { ...x, isPrimary: false }
-                        : x
-                  )
-                )
-              }
-              onRemove={(id) => setLocations((prev) => prev.filter((x) => x.id !== id))}
+              onList={setLocations}
             />
           ))}
         </div>

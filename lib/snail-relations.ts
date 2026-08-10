@@ -1,0 +1,21 @@
+import { prisma } from "@/lib/prisma";
+
+// Rows created in one transaction share a createdAt, so id breaks the tie and the
+// order stays stable. This is also the order the "oldest remaining inherits the
+// main flag" rule follows, so it lives in one place.
+const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
+
+/**
+ * Every mutating contacts/locations route answers with the resulting collection
+ * rather than the single row it touched: one write can change two rows (promoting
+ * one demotes another, deleting the main promotes its successor), so returning the
+ * whole list is what lets the client replace its state instead of trying to patch
+ * it into agreement with the server.
+ */
+export function listContacts(snailId: number) {
+  return prisma.contact.findMany({ where: { snailId }, orderBy: ORDER });
+}
+
+export function listLocations(snailId: number) {
+  return prisma.location.findMany({ where: { snailId }, orderBy: ORDER });
+}

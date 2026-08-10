@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
+import { listContacts } from "@/lib/snail-relations";
 
 type Ctx = { params: Promise<{ id: string; contactId: string }> };
 
@@ -39,7 +40,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     }
   }
 
-  const contact = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     // Promoting this contact to primary demotes the snail's other contacts.
     if (data.isPrimary === true) {
       await tx.contact.updateMany({
@@ -50,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     return tx.contact.update({ where: { id: cId }, data });
   });
 
-  return NextResponse.json(contact);
+  return NextResponse.json(await listContacts(parseInt(id)));
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
@@ -77,12 +78,12 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
     if (removed.isPrimary) {
       const next = await tx.contact.findFirst({
         where: { snailId: parseInt(id) },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }], // same order as listContacts/listLocations
       });
       if (next) {
         await tx.contact.update({ where: { id: next.id }, data: { isPrimary: true } });
       }
     }
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(await listContacts(parseInt(id)));
 }

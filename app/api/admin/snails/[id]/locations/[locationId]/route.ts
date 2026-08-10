@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
+import { listLocations } from "@/lib/snail-relations";
 import { geocodeAddress } from "@/lib/geocode";
 
 type Ctx = { params: Promise<{ id: string; locationId: string }> };
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     }
   }
 
-  const location = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     // Promoting this location to main demotes the snail's other locations.
     if (data.isPrimary === true) {
       await tx.location.updateMany({
@@ -68,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     return tx.location.update({ where: { id: lId }, data });
   });
 
-  return NextResponse.json(location);
+  return NextResponse.json(await listLocations(parseInt(id)));
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
@@ -95,12 +96,12 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
     if (removed.isPrimary) {
       const next = await tx.location.findFirst({
         where: { snailId: parseInt(id) },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }], // same order as listContacts/listLocations
       });
       if (next) {
         await tx.location.update({ where: { id: next.id }, data: { isPrimary: true } });
       }
     }
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(await listLocations(parseInt(id)));
 }

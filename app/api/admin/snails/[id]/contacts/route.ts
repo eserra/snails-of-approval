@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
+import { listContacts } from "@/lib/snail-relations";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const contacts = await prisma.contact.findMany({
-    where: { snailId: parseInt(id) },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
-  return NextResponse.json(contacts);
+  return NextResponse.json(await listContacts(parseInt(id)));
 }
 
 export async function POST(request: NextRequest, { params }: Ctx) {
@@ -24,7 +21,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   }
 
   const snailId = parseInt(id);
-  const contact = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     // Exactly one primary contact per snail: the first one added is always it, and
     // flagging a new one demotes the incumbent.
     const isFirst = (await tx.contact.count({ where: { snailId } })) === 0;
@@ -49,5 +46,5 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     });
   });
 
-  return NextResponse.json(contact, { status: 201 });
+  return NextResponse.json(await listContacts(snailId), { status: 201 });
 }
