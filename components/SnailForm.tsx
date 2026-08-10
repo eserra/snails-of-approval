@@ -10,6 +10,7 @@ import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
 import { businessStatuses } from "@/lib/business-status";
+import { isValidEmail } from "@/lib/email";
 import { locationKinds, boroughs } from "@/lib/location-kinds";
 import type { ResolvedAddress } from "@/lib/address";
 import PipelineProgress from "./PipelineProgress";
@@ -313,6 +314,17 @@ export default function SnailForm({
     ].filter(Boolean);
     if (missing.length) {
       setError(`A snail needs at least ${missing.join(" and ")}.`);
+      return;
+    }
+
+    // One address per contact — split multiple people into separate contacts.
+    const invalidEmail = form.contacts.find(
+      (c) => c.email.trim() && !isValidEmail(c.email)
+    );
+    if (invalidEmail) {
+      setError(
+        `"${invalidEmail.email}" is not a valid email address. Use one address per contact.`
+      );
       return;
     }
 

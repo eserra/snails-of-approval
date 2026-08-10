@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { listContacts } from "@/lib/snail-relations";
+import { isValidEmail } from "@/lib/email";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const body = await request.json();
   if (!body.name?.trim()) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
+  if (body.email?.trim() && !isValidEmail(body.email)) {
+    return NextResponse.json(
+      { error: `"${body.email}" is not a valid email address.` },
+      { status: 400 }
+    );
   }
 
   const snailId = parseInt(id);

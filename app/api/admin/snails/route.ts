@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 import { geocodeAddress } from "@/lib/geocode";
 import { requireWrite } from "@/lib/rbac";
+import { isValidEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -43,6 +44,20 @@ export async function POST(request: NextRequest) {
     ].filter(Boolean);
     return NextResponse.json(
       { error: `A snail needs at least ${missing.join(" and ")}.` },
+      { status: 400 }
+    );
+  }
+
+  // Reject junk in contact emails at the door (one address per contact — split
+  // multiple people into separate contacts). Mirrors the contact API routes.
+  const badEmail = Array.isArray(body.contacts)
+    ? body.contacts.find(
+        (c: { email?: string }) => c.email?.trim() && !isValidEmail(c.email)
+      )
+    : undefined;
+  if (badEmail) {
+    return NextResponse.json(
+      { error: `"${badEmail.email}" is not a valid email address.` },
       { status: 400 }
     );
   }
