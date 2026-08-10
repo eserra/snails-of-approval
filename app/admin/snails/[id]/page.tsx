@@ -31,7 +31,7 @@ export default function SnailDetailPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="flex items-center justify-between gap-4 mb-6 max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900">{name}</h1>
         <button
           type="button"
