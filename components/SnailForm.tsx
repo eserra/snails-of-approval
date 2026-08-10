@@ -651,34 +651,6 @@ export default function SnailForm({
               </div>
 
               <div>
-                <label className={labelClass}>Type</label>
-                <select
-                  value={location.kind}
-                  onChange={(e) => updateLocation(i, "kind", e.target.value)}
-                  className={`${inputClass} bg-white`}
-                >
-                  {locationKinds.map((k) => (
-                    <option key={k.value} value={k.value}>
-                      {k.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelClass}>
-                  Label{" "}
-                  <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  value={location.label}
-                  onChange={(e) => updateLocation(i, "label", e.target.value)}
-                  placeholder="e.g. Union Square stall"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
                 <label className={labelClass}>City</label>
                 <input
                   value={location.city}
@@ -717,6 +689,34 @@ export default function SnailForm({
                 <input
                   value={location.zip}
                   onChange={(e) => updateLocation(i, "zip", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Type</label>
+                <select
+                  value={location.kind}
+                  onChange={(e) => updateLocation(i, "kind", e.target.value)}
+                  className={`${inputClass} bg-white`}
+                >
+                  {locationKinds.map((k) => (
+                    <option key={k.value} value={k.value}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>
+                  Label{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  value={location.label}
+                  onChange={(e) => updateLocation(i, "label", e.target.value)}
+                  placeholder="e.g. Union Square stall"
                   className={inputClass}
                 />
               </div>

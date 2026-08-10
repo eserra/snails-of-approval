@@ -451,13 +451,6 @@ function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationF
           placeholder="Start typing to search..."
         />
       </div>
-      <div>
-        <label className={labelClass}>Type</label>
-        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className={`${inputClass} bg-white`}>
-          {locationKinds.map((k) => (<option key={k.value} value={k.value}>{k.label}</option>))}
-        </select>
-      </div>
-      <div><label className={labelClass}>Label <span className="text-gray-400 font-normal">(optional)</span></label><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Union Square stall" className={inputClass} /></div>
       <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
       <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
       <div>
@@ -468,6 +461,13 @@ function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationF
         </select>
       </div>
       <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
+      <div>
+        <label className={labelClass}>Type</label>
+        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className={`${inputClass} bg-white`}>
+          {locationKinds.map((k) => (<option key={k.value} value={k.value}>{k.label}</option>))}
+        </select>
+      </div>
+      <div><label className={labelClass}>Label <span className="text-gray-400 font-normal">(optional)</span></label><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Union Square stall" className={inputClass} /></div>
       <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
       <div><label className={labelClass}>Longitude</label><input value={f.longitude} onChange={(e) => setF({ ...f, longitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
       <div className="sm:col-span-2 space-y-2">
