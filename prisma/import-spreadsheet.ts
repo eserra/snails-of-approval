@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import * as XLSX from "xlsx";
 import { slugify } from "../lib/slug.js";
 import { stages } from "../lib/pipeline-stages.js";
+import { normalizeInstagramHandle } from "../lib/instagram.js";
 import path from "path";
 
 const adapter = new PrismaPg({
@@ -115,7 +116,10 @@ async function main() {
     const contactName = str(row["Contact Name"]);
     const email = str(row["Contact Email"]);
     const website = str(row["Website"]);
-    const instagramUrl = str(row["Instagram"]);
+    const instagramRaw = str(row["Instagram"]);
+    const instagramHandle = instagramRaw
+      ? normalizeInstagramHandle(instagramRaw)
+      : null;
     const sfusaSubtype = str(row["SFUSA Sub-type"]);
     const description = str(row["Blurb"]);
     const rawDiversity = str(row["Diversity / Ownership"]);
@@ -173,7 +177,7 @@ async function main() {
       yearAwarded,
       description,
       website,
-      instagramUrl,
+      instagramHandle,
       status,
       track,
       stage,

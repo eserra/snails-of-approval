@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
+import {
+  isValidInstagramHandle,
+  normalizeInstagramHandle,
+} from "@/lib/instagram";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -52,7 +56,19 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("description", body.description || null);
   set("website", body.website || null);
   set("facebookUrl", body.facebookUrl || null);
-  set("instagramUrl", body.instagramUrl || null);
+  // Instagram is stored as a handle, not a URL.
+  if ("instagramHandle" in body) {
+    const handle = body.instagramHandle?.trim()
+      ? normalizeInstagramHandle(body.instagramHandle)
+      : null;
+    if (handle && !isValidInstagramHandle(handle)) {
+      return NextResponse.json(
+        { error: `"${body.instagramHandle}" is not a valid Instagram handle.` },
+        { status: 400 }
+      );
+    }
+    data.instagramHandle = handle;
+  }
   set("otherSocial", body.otherSocial || null);
   set("photoUrl", body.photoUrl || null);
   set("status", body.status || "draft");

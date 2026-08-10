@@ -19,6 +19,7 @@ import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
 import { stageLabel, hasRecommendationStage } from "@/lib/pipeline-stages";
 import { isValidEmail } from "@/lib/email";
+import { instagramUrlFromHandle, normalizeInstagramHandle } from "@/lib/instagram";
 
 /* ── shared types ── */
 
@@ -300,7 +301,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
   const [f, setF] = useState({
     website: (snail.website as string) || "",
     facebookUrl: (snail.facebookUrl as string) || "",
-    instagramUrl: (snail.instagramUrl as string) || "",
+    instagramHandle: (snail.instagramHandle as string) || "",
     otherSocial: (snail.otherSocial as string) || "",
   });
   return (
@@ -308,7 +309,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><label className={labelClass}>Website</label><input type="url" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Facebook</label><input type="url" value={f.facebookUrl} onChange={(e) => setF({ ...f, facebookUrl: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Instagram</label><input type="url" value={f.instagramUrl} onChange={(e) => setF({ ...f, instagramUrl: e.target.value })} className={inputClass} /></div>
+        <div><label className={labelClass}>Instagram handle</label><input type="text" value={f.instagramHandle} onChange={(e) => setF({ ...f, instagramHandle: e.target.value })} placeholder="@handle" className={inputClass} /></div>
         <div className="sm:col-span-2"><label className={labelClass}>Other Social Media</label><input value={f.otherSocial} onChange={(e) => setF({ ...f, otherSocial: e.target.value })} className={inputClass} /></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
@@ -1003,7 +1004,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Website" value={snail.website ? <a href={snail.website as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.website as string).replace(/^https?:\/\//, "")}</a> : null} />
           <Field label="Facebook" value={snail.facebookUrl ? <a href={snail.facebookUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.facebookUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
-          <Field label="Instagram" value={snail.instagramUrl ? <a href={snail.instagramUrl as string} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">{(snail.instagramUrl as string).replace(/^https?:\/\//, "")}</a> : null} />
+          <Field label="Instagram" value={snail.instagramHandle ? <a href={instagramUrlFromHandle(snail.instagramHandle as string)} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-800 truncate block">@{normalizeInstagramHandle(snail.instagramHandle as string)}</a> : null} />
           <Field label="Other Social" value={snail.otherSocial as string} />
         </dl>
       </DetailSection>

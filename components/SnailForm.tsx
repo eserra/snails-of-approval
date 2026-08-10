@@ -11,6 +11,10 @@ import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib
 import { contactRoles } from "@/lib/contact-roles";
 import { businessStatuses } from "@/lib/business-status";
 import { isValidEmail } from "@/lib/email";
+import {
+  isValidInstagramHandle,
+  normalizeInstagramHandle,
+} from "@/lib/instagram";
 import { locationKinds, boroughs } from "@/lib/location-kinds";
 import type { ResolvedAddress } from "@/lib/address";
 import PipelineProgress from "./PipelineProgress";
@@ -73,7 +77,7 @@ type SnailData = {
   locations: LocationInput[];
   website: string;
   facebookUrl: string;
-  instagramUrl: string;
+  instagramHandle: string;
   otherSocial: string;
   photoUrl: string;
   status: string;
@@ -107,7 +111,7 @@ const emptySnail: SnailData = {
   locations: [],
   website: "",
   facebookUrl: "",
-  instagramUrl: "",
+  instagramHandle: "",
   otherSocial: "",
   photoUrl: "",
   status: "draft",
@@ -328,6 +332,14 @@ export default function SnailForm({
       return;
     }
 
+    // Instagram is stored as a handle, not a URL — reject anything that isn't one.
+    if (form.instagramHandle.trim() && !isValidInstagramHandle(form.instagramHandle)) {
+      setError(
+        `"${form.instagramHandle}" is not a valid Instagram handle. Use a handle like @stoic_cider.`
+      );
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -339,7 +351,10 @@ export default function SnailForm({
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        instagramHandle: normalizeInstagramHandle(form.instagramHandle),
+      }),
     });
 
     if (!res.ok) {
@@ -511,11 +526,12 @@ export default function SnailForm({
           </div>
 
           <div>
-            <label className={labelClass}>Instagram URL</label>
+            <label className={labelClass}>Instagram handle</label>
             <input
-              type="url"
-              value={form.instagramUrl}
-              onChange={(e) => update("instagramUrl", e.target.value)}
+              type="text"
+              value={form.instagramHandle}
+              onChange={(e) => update("instagramHandle", e.target.value)}
+              placeholder="@handle"
               className={inputClass}
             />
           </div>

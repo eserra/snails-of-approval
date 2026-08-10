@@ -5,6 +5,10 @@ import { slugify } from "@/lib/slug";
 import { geocodeAddress } from "@/lib/geocode";
 import { requireWrite } from "@/lib/rbac";
 import { isValidEmail } from "@/lib/email";
+import {
+  isValidInstagramHandle,
+  normalizeInstagramHandle,
+} from "@/lib/instagram";
 
 export async function GET() {
   try {
@@ -58,6 +62,17 @@ export async function POST(request: NextRequest) {
   if (badEmail) {
     return NextResponse.json(
       { error: `"${badEmail.email}" is not a valid email address.` },
+      { status: 400 }
+    );
+  }
+
+  // Instagram is stored as a handle, not a URL.
+  const instagramHandle = body.instagramHandle?.trim()
+    ? normalizeInstagramHandle(body.instagramHandle)
+    : null;
+  if (instagramHandle && !isValidInstagramHandle(instagramHandle)) {
+    return NextResponse.json(
+      { error: `"${body.instagramHandle}" is not a valid Instagram handle.` },
       { status: 400 }
     );
   }
@@ -157,7 +172,7 @@ export async function POST(request: NextRequest) {
       description: body.description || null,
       website: body.website || null,
       facebookUrl: body.facebookUrl || null,
-      instagramUrl: body.instagramUrl || null,
+      instagramHandle: instagramHandle,
       otherSocial: body.otherSocial || null,
       photoUrl: body.photoUrl || null,
       status: body.status || "draft",

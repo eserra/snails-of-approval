@@ -60,7 +60,7 @@ model Snail {
   description  String?  @db.Text
   website      String?
   facebookUrl  String?  @map("facebook_url")
-  instagramUrl String?  @map("instagram_url")
+  instagramHandle String? @map("instagram_handle")
   otherSocial  String?  @map("other_social")
   photoUrl     String?  @map("photo_url")
   status       String   @default("draft") // draft, published
