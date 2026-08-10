@@ -17,7 +17,7 @@ import {
 import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
 import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
-import { stageLabel } from "@/lib/pipeline-stages";
+import { stageLabel, hasRecommendationStage } from "@/lib/pipeline-stages";
 
 /* ── shared types ── */
 
@@ -229,7 +229,6 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
     track: snail.track,
     stage: snail.stage || "",
     blockedReason: (snail.blockedReason as string) || "",
-    recommendation: (snail.recommendation as string) || "",
   });
   const leadStages = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "deferred", "blocked"];
   const activeStages = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
@@ -239,8 +238,26 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
         <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "new" : "onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
         <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{stageLabel(s)}</option>))}</select></div>
         {f.stage === "blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
-        <div className="sm:col-span-2"><label className={labelClass}>SOA team recommendation (to the board)</label><textarea rows={3} value={f.recommendation} onChange={(e) => setF({ ...f, recommendation: e.target.value })} className={inputClass} placeholder="Summary and recommendation for the board vote" /></div>
       </div>
+      <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+    </div>
+  );
+}
+
+function RecommendationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
+  const [f, setF] = useState({
+    recommendation: (snail.recommendation as string) || "",
+  });
+  return (
+    <div className="space-y-4">
+      <label className={labelClass}>What the committee is telling the board</label>
+      <textarea
+        rows={6}
+        value={f.recommendation}
+        onChange={(e) => setF({ recommendation: e.target.value })}
+        className={inputClass}
+        placeholder="What the committee found on the application and the site visit, and what it recommends the board do."
+      />
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -819,6 +836,11 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   // Award-package fields belong to awardees, not leads.
   const isActive = snail.track === "active";
+  const showRecommendation = hasRecommendationStage(
+    snail.track,
+    snail.stage,
+    snail.recommendation as string | null
+  );
 
   useEffect(() => {
     Promise.all([
@@ -937,12 +959,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
               }
             />
           ) : null}
-          {snail.recommendation ? (
-            <div className="sm:col-span-2">
-              <dt className="text-xs text-gray-500">Recommendation to board</dt>
-              <dd className="text-sm text-gray-900 mt-0.5 whitespace-pre-wrap">{snail.recommendation as string}</dd>
-            </div>
-          ) : null}
         </dl>
       </DetailSection>
 
@@ -1002,6 +1018,19 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <FileUpload key={category} snailId={snail.id} category={category} label={config.label} maxCount={config.maxCount} attachments={attachments.filter((a) => a.category === category)} onUpload={(a) => setAttachments((prev) => [a, ...prev])} onDelete={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))} />
         ))}
       </div>
+
+      {/* Committee recommendation — only once a snail is far enough along to have one */}
+      {showRecommendation && (
+        <DetailSection title="Committee recommendation" snailId={snail.id} EditForm={(props) => <RecommendationEditForm {...props} snail={snail} />}>
+          {snail.recommendation ? (
+            <p className="text-sm text-gray-900 whitespace-pre-wrap">{snail.recommendation as string}</p>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Not written yet — the board needs this before it can vote.
+            </p>
+          )}
+        </DetailSection>
+      )}
 
       {/* Notes */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">

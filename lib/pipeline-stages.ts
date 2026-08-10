@@ -56,3 +56,25 @@ export const sideTrackStages = stages
 export function stagesForTrack(track: string): Stage[] {
   return stages.filter((s) => s.track === track || s.track === "side");
 }
+
+/** Position of a stage within its track's funnel; -1 for side tracks and unknowns. */
+export function stageIndex(track: string, stage: string | null): number {
+  if (!stage) return -1;
+  return (pipelineStages[track] ?? []).indexOf(stage);
+}
+
+/**
+ * The committee writes its recommendation once the site visit is done, and the
+ * board votes on it — so it is relevant from `visited` onward, and for every
+ * active awardee. Snails that already have one keep showing it wherever they
+ * end up (deferred, lapsed), so the record is never hidden.
+ */
+export function hasRecommendationStage(
+  track: string,
+  stage: string | null,
+  recommendation?: string | null
+): boolean {
+  if (recommendation) return true;
+  if (track === "active") return true;
+  return stageIndex("lead", stage) >= stageIndex("lead", "visited");
+}
