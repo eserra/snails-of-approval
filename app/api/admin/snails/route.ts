@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Instagram is stored as a handle, not a URL.
-  const instagramHandle = body.instagramUrl?.trim()
-    ? normalizeInstagramHandle(body.instagramUrl)
+  const instagramHandle = body.instagramHandle?.trim()
+    ? normalizeInstagramHandle(body.instagramHandle)
     : null;
   if (instagramHandle && !isValidInstagramHandle(instagramHandle)) {
     return NextResponse.json(
-      { error: `"${body.instagramUrl}" is not a valid Instagram handle.` },
+      { error: `"${body.instagramHandle}" is not a valid Instagram handle.` },
       { status: 400 }
     );
   }
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
       description: body.description || null,
       website: body.website || null,
       facebookUrl: body.facebookUrl || null,
-      instagramUrl: instagramHandle,
+      instagramHandle: instagramHandle,
       otherSocial: body.otherSocial || null,
       photoUrl: body.photoUrl || null,
       status: body.status || "draft",

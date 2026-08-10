@@ -57,17 +57,17 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("website", body.website || null);
   set("facebookUrl", body.facebookUrl || null);
   // Instagram is stored as a handle, not a URL.
-  if ("instagramUrl" in body) {
-    const handle = body.instagramUrl?.trim()
-      ? normalizeInstagramHandle(body.instagramUrl)
+  if ("instagramHandle" in body) {
+    const handle = body.instagramHandle?.trim()
+      ? normalizeInstagramHandle(body.instagramHandle)
       : null;
     if (handle && !isValidInstagramHandle(handle)) {
       return NextResponse.json(
-        { error: `"${body.instagramUrl}" is not a valid Instagram handle.` },
+        { error: `"${body.instagramHandle}" is not a valid Instagram handle.` },
         { status: 400 }
       );
     }
-    data.instagramUrl = handle;
+    data.instagramHandle = handle;
   }
   set("otherSocial", body.otherSocial || null);
   set("photoUrl", body.photoUrl || null);

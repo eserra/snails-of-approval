@@ -45,7 +45,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     ownershipSlugs: parseDiversityTags(snail.diversityTags),
     website: snail.website,
     facebook: snail.facebookUrl,
-    instagram: snail.instagramUrl,
+    instagram: snail.instagramHandle,
     otherSocial: snail.otherSocial,
     phone,
     phoneVanity: primary?.phoneVanity ?? null,

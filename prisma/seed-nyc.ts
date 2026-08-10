@@ -35,7 +35,7 @@ const nycSnails = [
     longitude: -73.9916,
     phone: "(212) 633-2253",
     website: "https://www.breadsbakery.com",
-    instagramUrl: "https://instagram.com/breadsbakery",
+    instagramHandle: "breadsbakery",
     categoryId: 5, // bakery
     chapterId: 4,
     status: "published",
@@ -67,7 +67,7 @@ const nycSnails = [
     email: "info@saxelbycheese.com",
     phone: "(212) 228-8204",
     website: "https://www.saxelbycheese.com",
-    instagramUrl: "https://instagram.com/saxelbycheese",
+    instagramHandle: "saxelbycheese",
     categoryId: 3, // producer
     chapterId: 4,
     status: "published",
@@ -98,7 +98,7 @@ const nycSnails = [
     latitude: 40.7052,
     longitude: -73.9339,
     website: "https://www.robertaspizza.com",
-    instagramUrl: "https://instagram.com/robertaspizza",
+    instagramHandle: "robertaspizza",
     categoryId: 1, // restaurant
     chapterId: 4,
     status: "published",

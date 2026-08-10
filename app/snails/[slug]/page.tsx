@@ -119,7 +119,7 @@ export default async function SnailDetailPage({ params }: Props) {
           ))}
         </div>
 
-        {(snail.website || snail.facebookUrl || snail.instagramUrl) && (
+        {(snail.website || snail.facebookUrl || snail.instagramHandle) && (
           <div className="border-t border-gray-200 pt-4 mt-4 flex gap-4">
             {snail.website && (
               <a
@@ -141,9 +141,9 @@ export default async function SnailDetailPage({ params }: Props) {
                 Facebook
               </a>
             )}
-            {snail.instagramUrl && (
+            {snail.instagramHandle && (
               <a
-                href={instagramUrlFromHandle(snail.instagramUrl)}
+                href={instagramUrlFromHandle(snail.instagramHandle)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-amber-700 hover:text-amber-800"

@@ -77,7 +77,7 @@ type SnailData = {
   locations: LocationInput[];
   website: string;
   facebookUrl: string;
-  instagramUrl: string;
+  instagramHandle: string;
   otherSocial: string;
   photoUrl: string;
   status: string;
@@ -111,7 +111,7 @@ const emptySnail: SnailData = {
   locations: [],
   website: "",
   facebookUrl: "",
-  instagramUrl: "",
+  instagramHandle: "",
   otherSocial: "",
   photoUrl: "",
   status: "draft",
@@ -333,9 +333,9 @@ export default function SnailForm({
     }
 
     // Instagram is stored as a handle, not a URL — reject anything that isn't one.
-    if (form.instagramUrl.trim() && !isValidInstagramHandle(form.instagramUrl)) {
+    if (form.instagramHandle.trim() && !isValidInstagramHandle(form.instagramHandle)) {
       setError(
-        `"${form.instagramUrl}" is not a valid Instagram handle. Use a handle like @stoic_cider.`
+        `"${form.instagramHandle}" is not a valid Instagram handle. Use a handle like @stoic_cider.`
       );
       return;
     }
@@ -353,7 +353,7 @@ export default function SnailForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        instagramUrl: normalizeInstagramHandle(form.instagramUrl),
+        instagramHandle: normalizeInstagramHandle(form.instagramHandle),
       }),
     });
 
@@ -529,8 +529,8 @@ export default function SnailForm({
             <label className={labelClass}>Instagram handle</label>
             <input
               type="text"
-              value={form.instagramUrl}
-              onChange={(e) => update("instagramUrl", e.target.value)}
+              value={form.instagramHandle}
+              onChange={(e) => update("instagramHandle", e.target.value)}
               placeholder="@handle"
               className={inputClass}
             />
