@@ -21,3 +21,10 @@ export async function requireWrite(
 ): Promise<NextResponse | null> {
   return requireRole(request, WRITE_ROLES);
 }
+
+/** For the shared vocabulary — chapters, categories — that editors read but don't own. */
+export async function requireAdmin(
+  request: NextRequest
+): Promise<NextResponse | null> {
+  return requireRole(request, ["admin"]);
+}

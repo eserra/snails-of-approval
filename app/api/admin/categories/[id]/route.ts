@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireWrite } from "@/lib/rbac";
+import { requireAdmin } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
-  const forbidden = await requireWrite(request);
+  const forbidden = await requireAdmin(request);
   if (forbidden) return forbidden;
 
   const { id } = await params;
@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
-  const forbidden = await requireWrite(request);
+  const forbidden = await requireAdmin(request);
   if (forbidden) return forbidden;
 
   const { id } = await params;
