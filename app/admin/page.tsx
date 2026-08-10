@@ -14,6 +14,17 @@ type DashboardStats = {
   leadFunnel: { stage: string; count: number }[];
 };
 
+type RecentCheckIn = {
+  id: number;
+  visitedAt: string;
+  partySize: number;
+  occasion: string | null;
+  amount: string | null;
+  notes: string;
+  author: { name: string };
+  snail: { id: number; name: string; slug: string };
+};
+
 const quickLinks = [
   {
     href: "/admin/snails",
@@ -38,11 +49,16 @@ const quickLinks = [
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [checkIns, setCheckIns] = useState<RecentCheckIn[] | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/dashboard/stats")
       .then((r) => r.json())
       .then(setStats)
+      .catch(console.error);
+    fetch("/api/admin/checkins")
+      .then((r) => r.json())
+      .then(setCheckIns)
       .catch(console.error);
   }, []);
 
@@ -125,6 +141,55 @@ export default function AdminDashboard() {
           <div className="h-48 flex items-center justify-center">
             <span className="text-sm text-gray-400">Loading...</span>
           </div>
+        )}
+      </div>
+
+      {/* Recent visits */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Recent Visits</h2>
+        {checkIns === null ? (
+          <span className="text-sm text-gray-400">Loading...</span>
+        ) : checkIns.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No check-ins yet. Record a visit from a snail&apos;s page.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {checkIns.map((c) => {
+              const money =
+                c.amount === null || isNaN(Number(c.amount))
+                  ? null
+                  : Number(c.amount).toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    });
+              return (
+                <li key={c.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <Link
+                      href={`/admin/snails/${c.snail.id}`}
+                      className="text-sm font-medium text-amber-700 hover:text-amber-800"
+                    >
+                      {c.snail.name}
+                    </Link>
+                    <span className="shrink-0 text-xs text-gray-400 tabular-nums">
+                      {new Date(c.visitedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {c.author.name}
+                    {" · "}
+                    {c.partySize} {c.partySize === 1 ? "person" : "people"}
+                    {c.occasion ? ` · ${c.occasion}` : ""}
+                    {money ? ` · ${money}` : ""}
+                  </p>
+                  <p className="text-sm text-gray-700 mt-1 line-clamp-2 whitespace-pre-line">
+                    {c.notes}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
