@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { listContacts } from "@/lib/snail-relations";
+import { isValidEmail } from "@/lib/email";
 
 type Ctx = { params: Promise<{ id: string; contactId: string }> };
 
@@ -20,7 +21,15 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     data.name = body.name.trim();
   }
   if ("role" in body) data.role = body.role || "general";
-  if ("email" in body) data.email = body.email || null;
+  if ("email" in body) {
+    if (body.email?.trim() && !isValidEmail(body.email)) {
+      return NextResponse.json(
+        { error: `"${body.email}" is not a valid email address.` },
+        { status: 400 }
+      );
+    }
+    data.email = body.email || null;
+  }
   if ("phone" in body) data.phone = body.phone || null;
   if ("phoneVanity" in body) data.phoneVanity = body.phoneVanity || null;
   if ("isPublic" in body) data.isPublic = !!body.isPublic;

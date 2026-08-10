@@ -24,6 +24,9 @@ Node 20 is required (managed via mise.toml).
 - `DATABASE_URL` — PostgreSQL connection string (required)
 - `NEXTAUTH_SECRET` — JWT signing secret (required in production)
 - `NEXTAUTH_URL` — Base URL for NextAuth callbacks (not needed on Vercel; auto-detected)
+- `MAILCHIMP_API_KEY` — Marketing API key; the datacenter (e.g. `us21`) is parsed from its suffix
+- `MAILCHIMP_AUDIENCE_ID` — the single Mailchimp audience contacts sync into
+- `CRON_SECRET` — shared secret guarding the scheduled Mailchimp sync cron (optional)
 
 ## Architecture
 
@@ -65,6 +68,7 @@ Prisma client singleton in `lib/prisma.ts` uses `@prisma/adapter-pg`. Generated 
 
 - **Map rendering**: Leaflet components use dynamic import with `ssr: false` to avoid server-side issues
 - **Geocoding**: `lib/geocode.ts` calls Nominatim OSM API to convert addresses to lat/lon on snail creation
+- **Mailchimp sync**: `lib/mailchimp/` pushes contacts (one-way) into a single audience, writing merge fields that drive auto-updating segments (Leads, Active, …). Upserts send only `status_if_new`, never `status`, so existing subscribe/unsubscribe state is preserved. Triggered by the admin "Sync to Mailchimp" button (`/api/admin/mailchimp/sync`) or the daily cron (`/api/cron/mailchimp-sync`, see `vercel.json`)
 - **Slug generation**: `lib/slug.ts` auto-generates URL-safe slugs; appends timestamp on collision
 - **Filtering/pagination**: URL search params for state persistence
 - **Public vs draft**: Only `status: "published"` snails appear on public pages

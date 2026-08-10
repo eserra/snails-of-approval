@@ -62,7 +62,9 @@ export default function AdminSnailsPage() {
   const [mineOnly, setMineOnly] = useState(false);
   const [notOnMapOnly, setNotOnMapOnly] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [mcSyncing, setMcSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [mcReport, setMcReport] = useState<McReport | null>(null);
 
   function loadSnails() {
     return fetch("/api/admin/snails")
@@ -96,6 +98,22 @@ export default function AdminSnailsPage() {
       setSyncResult("Sync failed");
     }
     setSyncing(false);
+  }
+
+  async function handleSyncMailchimp() {
+    setMcSyncing(true);
+    setSyncResult(null);
+    setMcReport(null);
+    try {
+      const res = await fetch("/api/admin/mailchimp/sync", { method: "POST" });
+      const data = await res.json();
+      setMcReport(
+        res.ok ? data : { error: data.error || "Mailchimp sync failed" }
+      );
+    } catch {
+      setMcReport({ error: "Mailchimp sync failed" });
+    }
+    setMcSyncing(false);
   }
 
   const userId = session?.user?.id;
@@ -139,6 +157,14 @@ export default function AdminSnailsPage() {
           >
             {syncing ? "Syncing…" : "Sync SFUSA map"}
           </button>
+          <button
+            onClick={handleSyncMailchimp}
+            disabled={mcSyncing}
+            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            title="Push contacts to Mailchimp and refresh audience segments"
+          >
+            {mcSyncing ? "Syncing…" : "Sync to Mailchimp"}
+          </button>
           <Link
             href="/admin/snails/new"
             className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors shadow-sm"
@@ -152,6 +178,10 @@ export default function AdminSnailsPage() {
         <p className="mb-4 text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
           {syncResult}
         </p>
+      )}
+
+      {mcReport && (
+        <MailchimpReport report={mcReport} onClose={() => setMcReport(null)} />
       )}
 
       {/* Tabs + My Snails toggle */}
@@ -301,6 +331,156 @@ export default function AdminSnailsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Mailchimp sync report ─────────────────────────────────────────────── */
+
+type SyncIssue = { snail: string; value: string; reason?: string };
+type McReport =
+  | { error: string }
+  | {
+      schema?: { mergeFieldsCreated: string[]; segmentsCreated: string[] };
+      considered: number;
+      synced: number;
+      skipped: number;
+      duplicates: number;
+      failed: number;
+      invalidEmails: SyncIssue[];
+      failures: SyncIssue[];
+    };
+
+const statTones: Record<string, string> = {
+  green: "bg-green-100 text-green-800",
+  amber: "bg-amber-100 text-amber-800",
+  red: "bg-red-100 text-red-800",
+  gray: "bg-gray-100 text-gray-700",
+};
+
+function Stat({
+  value,
+  label,
+  tone,
+}: {
+  value: number;
+  label: string;
+  tone: keyof typeof statTones;
+}) {
+  return (
+    <span
+      className={`inline-flex items-baseline gap-1 rounded-full px-2.5 py-0.5 ${statTones[tone]}`}
+    >
+      <span className="font-semibold">{value}</span>
+      <span className="text-xs">{label}</span>
+    </span>
+  );
+}
+
+function IssueList({ issues, shown }: { issues: SyncIssue[]; shown: number }) {
+  return (
+    <>
+      <ul className="mt-1 rounded-md border border-gray-200 bg-white divide-y divide-gray-100">
+        {issues.map((it, i) => (
+          <li key={i} className="px-3 py-1.5 text-sm">
+            <div className="flex items-baseline gap-2">
+              <span className="font-medium text-gray-800 shrink-0">
+                {it.snail}
+              </span>
+              <span className="font-mono text-xs text-gray-500 break-all">
+                {it.value}
+              </span>
+            </div>
+            {it.reason && (
+              <span className="text-xs text-red-600">{it.reason}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {shown > issues.length && (
+        <p className="mt-1 text-xs text-gray-400">
+          + {shown - issues.length} more not shown
+        </p>
+      )}
+    </>
+  );
+}
+
+function MailchimpReport({
+  report,
+  onClose,
+}: {
+  report: McReport;
+  onClose: () => void;
+}) {
+  if ("error" in report) {
+    return (
+      <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        Mailchimp sync failed: {report.error}
+      </div>
+    );
+  }
+
+  const created = [
+    ...(report.schema?.mergeFieldsCreated ?? []),
+    ...(report.schema?.segmentsCreated ?? []),
+  ];
+
+  return (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-900">
+          Mailchimp sync · {report.synced} of {report.considered} contacts
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Stat value={report.synced} label="synced" tone="green" />
+        {report.skipped > 0 && (
+          <Stat value={report.skipped} label="skipped" tone="amber" />
+        )}
+        {report.duplicates > 0 && (
+          <Stat value={report.duplicates} label="duplicates merged" tone="gray" />
+        )}
+        {report.failed > 0 && (
+          <Stat value={report.failed} label="failed" tone="red" />
+        )}
+      </div>
+
+      {created.length > 0 && (
+        <p className="mt-2 text-xs text-gray-500">
+          Set up in Mailchimp: {created.join(", ")}
+        </p>
+      )}
+
+      {report.invalidEmails.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Skipped — invalid email
+          </p>
+          <IssueList issues={report.invalidEmails} shown={report.skipped} />
+          <p className="mt-1 text-xs text-gray-500">
+            Fix on the contact — one email address each; split multiple people
+            into separate contacts.
+          </p>
+        </div>
+      )}
+
+      {report.failures.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
+            Failed
+          </p>
+          <IssueList issues={report.failures} shown={report.failed} />
         </div>
       )}
     </div>

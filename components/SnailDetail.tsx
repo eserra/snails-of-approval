@@ -18,6 +18,7 @@ import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
 import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
 import { stageLabel, hasRecommendationStage } from "@/lib/pipeline-stages";
+import { isValidEmail } from "@/lib/email";
 
 /* ── shared types ── */
 
@@ -370,6 +371,10 @@ function ContactRow({ contact, snailId, onList }: {
 
   async function save() {
     if (!f.name.trim()) return;
+    if (f.email.trim() && !isValidEmail(f.email)) {
+      setError(`"${f.email}" is not a valid email address. Use one address per contact.`);
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
       method: "PUT",
@@ -460,10 +465,15 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
   const [contacts, setContacts] = useState<ContactData[]>(initial);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [f, setF] = useState<ContactFormState>(emptyContactForm);
 
   async function add() {
     if (!f.name.trim()) return;
+    if (f.email.trim() && !isValidEmail(f.email)) {
+      setError(`"${f.email}" is not a valid email address. Use one address per contact.`);
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/admin/snails/${snailId}/contacts`, {
       method: "POST",
@@ -475,7 +485,11 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
       setContacts(await res.json());
       setF(emptyContactForm);
       setAdding(false);
+      setError("");
+      return;
     }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error || "Failed to add contact");
   }
 
   return (
@@ -492,7 +506,8 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
       {adding && (
         <div className="border border-gray-200 rounded-lg p-3 space-y-3">
           <ContactFields f={f} setF={setF} />
-          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyContactForm); }} saving={saving} />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyContactForm); setError(""); }} saving={saving} />
         </div>
       )}
 
