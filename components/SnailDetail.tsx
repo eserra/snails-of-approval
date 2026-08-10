@@ -769,6 +769,8 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
     pressReleaseSent: snail.pressReleaseSent as boolean,
     socialAnnounced: snail.socialAnnounced as boolean,
   });
+  // Award-package fields belong to awardees, not leads.
+  const isActive = snail.track === "active";
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -776,6 +778,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
         <div><label className={labelClass}>Last Touch Date</label><input type="date" value={f.lastTouchDate} onChange={(e) => setF({ ...f, lastTouchDate: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
       </div>
+      {isActive && (
       <fieldset className="rounded-lg border border-gray-200 p-3">
         <legend className="px-1 text-xs font-semibold text-gray-500">Award package</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -786,6 +789,8 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
           <div className="sm:col-span-2"><label className={labelClass}>Certificate requested (allow ~1 week)</label><input type="date" value={f.certificateRequestedDate} onChange={(e) => setF({ ...f, certificateRequestedDate: e.target.value })} className={inputClass} /></div>
         </div>
       </fieldset>
+      )}
+      {isActive && (
       <fieldset className="rounded-lg border border-gray-200 p-3">
         <legend className="px-1 text-xs font-semibold text-gray-500">Announcement</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -793,6 +798,7 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
           <div className="flex items-center gap-2"><input type="checkbox" checked={f.socialAnnounced} onChange={(e) => setF({ ...f, socialAnnounced: e.target.checked })} className={checkboxClass} id="so-edit" /><label htmlFor="so-edit" className="text-sm text-gray-700">Announced on social</label></div>
         </div>
       </fieldset>
+      )}
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -810,6 +816,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [addingNote, setAddingNote] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  // Award-package fields belong to awardees, not leads.
+  const isActive = snail.track === "active";
 
   useEffect(() => {
     Promise.all([
@@ -952,6 +960,9 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
           <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
         </dl>
+        {/* The award package and its announcement only exist once the board has
+            approved and the snail is an active awardee. */}
+        {isActive && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Award package</span>
@@ -970,6 +981,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
             />
           </ul>
         </div>
+        )}
+        {isActive && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <span className="mb-1.5 block text-xs font-semibold text-gray-500">Announcement</span>
           <ul className="grid gap-1 sm:grid-cols-2">
@@ -977,6 +990,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
             <ChecklistItem done={snail.socialAnnounced as boolean} label="Announced on social" />
           </ul>
         </div>
+        )}
       </DetailSection>
 
       {/* Attachments */}
