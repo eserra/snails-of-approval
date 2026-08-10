@@ -17,6 +17,7 @@ import {
 import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
 import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
+import { stageLabel } from "@/lib/pipeline-stages";
 
 /* ── shared types ── */
 
@@ -230,14 +231,14 @@ function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & {
     blockedReason: (snail.blockedReason as string) || "",
     recommendation: (snail.recommendation as string) || "",
   });
-  const leadStages = ["Lapsed", "New", "Contacted", "Applied", "Visited", "Voted", "Deferred", "Blocked"];
-  const activeStages = ["Onboarding", "Active", "Renewal Due", "Renewal Submitted", "Blocked"];
+  const leadStages = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "deferred", "blocked"];
+  const activeStages = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "New" : "Onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
-        <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{s}</option>))}</select></div>
-        {f.stage === "Blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
+        <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "new" : "onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
+        <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{stageLabel(s)}</option>))}</select></div>
+        {f.stage === "blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
         <div className="sm:col-span-2"><label className={labelClass}>SOA team recommendation (to the board)</label><textarea rows={3} value={f.recommendation} onChange={(e) => setF({ ...f, recommendation: e.target.value })} className={inputClass} placeholder="Summary and recommendation for the board vote" /></div>
       </div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
@@ -922,8 +923,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
-          <Field label="Stage" value={snail.stage} />
-          {snail.stage === "Blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
+          <Field label="Stage" value={stageLabel(snail.stage as string | null)} />
+          {snail.stage === "blocked" && <Field label="Blocked Reason" value={snail.blockedReason as string} />}
           {snail.boardDecision ? (
             <Field
               label="Board decision"

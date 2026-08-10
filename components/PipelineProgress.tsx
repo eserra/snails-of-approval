@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  pipelineStages,
-  sideTrackStages,
   stageCTAHints,
   stageRequirements,
   validateStageChange,
 } from "@/lib/stage-requirements";
+import { pipelineStages, sideTrackStages, stageLabel } from "@/lib/pipeline-stages";
 
 type PipelineProgressProps = {
   track: string;
@@ -34,8 +33,8 @@ export default function PipelineProgress({
 
   const currentIndex = stages.indexOf(currentStage);
   const isSideTrack = sideTrackStages.includes(currentStage);
-  const isVoted = currentStage === "Voted";
-  const isDeferred = currentStage === "Deferred";
+  const isAwaitingBoard = currentStage === "board_review";
+  const isDeferred = currentStage === "deferred";
   const activeIndex = isSideTrack ? -1 : currentIndex;
   const isLastStage = currentIndex === stages.length - 1;
 
@@ -49,7 +48,7 @@ export default function PipelineProgress({
 
   async function handleAdvance(targetStage: string) {
     if (!snailId) return;
-    if (!confirm(`Advance to "${targetStage}"?`)) return;
+    if (!confirm(`Advance to "${stageLabel(targetStage)}"?`)) return;
     setAdvancing(true);
     const res = await fetch(`/api/admin/snails/${snailId}/advance`, {
       method: "POST",
@@ -133,7 +132,7 @@ export default function PipelineProgress({
               onClick={canClick ? () => handleAdvance(stage) : undefined}
               title={
                 isNext
-                  ? `Click to advance to ${stage}${hasUnmetReqs ? ` (requires: ${reqLabels.join(", ")})` : ""}`
+                  ? `Click to advance to ${stageLabel(stage)}${hasUnmetReqs ? ` (requires: ${reqLabels.join(", ")})` : ""}`
                   : isFuture && reqLabels.length > 0
                     ? `Requires: ${reqLabels.join(", ")}`
                     : stage
@@ -163,7 +162,7 @@ export default function PipelineProgress({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               )}
-              <span className="truncate">{stage}</span>
+              <span className="truncate">{stageLabel(stage)}</span>
               {isNext && !advancing && (
                 <svg className="size-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -179,9 +178,9 @@ export default function PipelineProgress({
         <div className="flex flex-wrap items-center gap-2">
           <div
             className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium ${
-              currentStage === "Blocked"
+              currentStage === "blocked"
                 ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                : currentStage === "Deferred"
+                : currentStage === "deferred"
                   ? "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20"
                   : "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10"
             }`}
@@ -189,7 +188,7 @@ export default function PipelineProgress({
             <svg className="size-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
-            Currently {currentStage}
+            Currently {stageLabel(currentStage)}
           </div>
           {snailId && isDeferred && (
             <button
@@ -204,8 +203,8 @@ export default function PipelineProgress({
         </div>
       )}
 
-      {/* Board decision fork (out of the "Voted" stage) */}
-      {snailId && isVoted && (
+      {/* Board decision fork (out of the "board_review" stage) */}
+      {snailId && isAwaitingBoard && (
         <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
           <p className="text-xs font-semibold text-purple-800">Board decision</p>
           <p className="mt-0.5 text-xs text-purple-700">
@@ -254,7 +253,7 @@ export default function PipelineProgress({
       )}
 
       {/* Last stage message */}
-      {snailId && isLastStage && !isSideTrack && !isVoted && ctaHint && (
+      {snailId && isLastStage && !isSideTrack && !isAwaitingBoard && ctaHint && (
         <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
           <svg className="size-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

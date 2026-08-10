@@ -18,10 +18,10 @@ export type StageWarning = {
 };
 
 export const stageRequirements: Record<string, StageRequirement[]> = {
-  Applied: [
+  applied: [
     { type: "attachment", category: "application", label: "Application PDF" },
   ],
-  Visited: [
+  visited: [
     {
       type: "attachment",
       category: "site-visit-report",
@@ -30,27 +30,18 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
   ],
 };
 
-/** Ordered pipeline stages per track (excluding side-track states like Blocked/Lapsed) */
-export const pipelineStages: Record<string, string[]> = {
-  lead: ["New", "Contacted", "Applied", "Visited", "Voted"],
-  active: ["Onboarding", "Active", "Renewal Due", "Renewal Submitted"],
-};
-
-/** States that sit outside the ordered funnel (no linear "next" step) */
-export const sideTrackStages = ["Blocked", "Lapsed", "Deferred"];
-
 /** CTA hints encouraging the volunteer to advance the snail to the next stage */
 export const stageCTAHints: Record<string, string> = {
-  New: "Reach out to this lead",
-  Contacted: "Send or collect the application form",
-  Applied: "Schedule a site visit",
-  Visited: "Submit for committee vote",
-  Voted: "Record the board's decision below",
-  Deferred: "Applicant may reapply when ready — reopen to continue",
-  Onboarding: "Deliver the award package: stickers, digital assets, welcome letter, certificate",
-  Active: "Monitor until renewal is due",
-  "Renewal Due": "Request renewal submission",
-  "Renewal Submitted": "Review renewal application",
+  new: "Reach out to this lead",
+  contacted: "Send or collect the application form",
+  applied: "Schedule a site visit",
+  visited: "Submit to the board for a vote",
+  board_review: "Record the board's decision below",
+  deferred: "Applicant may reapply when ready — reopen to continue",
+  onboarding: "Deliver the award package: stickers, digital assets, welcome letter, certificate",
+  active: "Monitor until renewal is due",
+  renewal_due: "Request renewal submission",
+  renewal_submitted: "Review renewal application",
 };
 
 export function validateStageChange(

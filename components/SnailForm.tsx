@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
 import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
+import { stageLabel } from "@/lib/pipeline-stages";
 import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
@@ -112,7 +113,7 @@ const emptySnail: SnailData = {
   categoryId: "",
   chapterId: "",
   track: "lead",
-  stage: "New",
+  stage: "new",
   formerAwardee: false,
   renewalDueYear: "",
   businessStatus: "",
@@ -126,6 +127,12 @@ const emptySnail: SnailData = {
   stickersDelivered: false,
   diversityTags: "",
 };
+
+// Which stages each role may set directly. Editors get the two they routinely
+// move a lead through; everything else goes via the pipeline bar.
+const leadStageOptions = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "blocked"];
+const editorLeadStageOptions = ["new", "applied"];
+const activeStageOptions = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
@@ -817,9 +824,9 @@ export default function SnailForm({
                 const newTrack = e.target.value;
                 update("track", newTrack);
                 if (newTrack === "lead") {
-                  update("stage", form.formerAwardee ? "Lapsed" : "New");
+                  update("stage", form.formerAwardee ? "lapsed" : "new");
                 } else {
-                  update("stage", "Onboarding");
+                  update("stage", "onboarding");
                 }
               }}
               className={`${inputClass} bg-white`}
@@ -843,36 +850,20 @@ export default function SnailForm({
               }}
               className={`${inputClass} bg-white`}
             >
-              {form.track === "lead" ? (
-                isAdmin ? (
-                  <>
-                    <option value="Lapsed">Lapsed</option>
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Applied">Applied</option>
-                    <option value="Visited">Visited</option>
-                    <option value="Voted">Voted</option>
-                    <option value="Blocked">Blocked</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="New">New</option>
-                    <option value="Applied">Applied</option>
-                  </>
-                )
-              ) : (
-                <>
-                  <option value="Onboarding">Onboarding</option>
-                  <option value="Active">Active</option>
-                  <option value="Renewal Due">Renewal Due</option>
-                  <option value="Renewal Submitted">Renewal Submitted</option>
-                  <option value="Blocked">Blocked</option>
-                </>
-              )}
+              {(form.track === "lead"
+                ? isAdmin
+                  ? leadStageOptions
+                  : editorLeadStageOptions
+                : activeStageOptions
+              ).map((value) => (
+                <option key={value} value={value}>
+                  {stageLabel(value)}
+                </option>
+              ))}
             </select>
           </div>
 
-          {form.stage === "Blocked" && (
+          {form.stage === "blocked" && (
             <div className="sm:col-span-2">
               <label className={labelClass}>Blocked/Rejected Reason</label>
               <input
