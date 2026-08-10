@@ -165,7 +165,6 @@ async function main() {
       name,
       yearAwarded,
       description,
-      address,
       website,
       instagramUrl,
       status,
@@ -176,8 +175,6 @@ async function main() {
       businessStatus,
       source,
       blockedReason,
-      borough,
-      zip,
       onSfusaMap,
       establishmentType,
       assigneeId: assignee?.id || null,
@@ -200,6 +197,30 @@ async function main() {
       update: data,
       create: { slug, ...data },
     });
+
+    // Fold the spreadsheet's single address into the snail's main location.
+    // Re-run safe: only create if this snail has no location yet.
+    if (address || borough || zip) {
+      const snail = await prisma.snail.findUnique({ where: { slug } });
+      if (snail) {
+        const existingLocation = await prisma.location.findFirst({
+          where: { snailId: snail.id },
+        });
+        if (!existingLocation) {
+          await prisma.location.create({
+            data: {
+              kind: "storefront",
+              address,
+              borough,
+              zip,
+              isPublic: true,
+              isPrimary: true,
+              snailId: snail.id,
+            },
+          });
+        }
+      }
+    }
 
     // Fold the spreadsheet's single contact into a "general" contact row.
     // Re-run safe: only create if this snail has no general contact yet.

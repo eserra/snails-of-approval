@@ -16,6 +16,7 @@ import {
 } from "@/lib/diversity-tags";
 import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
 import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
+import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
 
 /* ── shared types ── */
 
@@ -30,6 +31,21 @@ type ContactData = {
   isPrimary: boolean;
 };
 
+type LocationData = {
+  id: number;
+  label: string | null;
+  kind: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  borough: string | null;
+  zip: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  isPublic: boolean;
+  isPrimary: boolean;
+};
+
 type SnailData = Record<string, unknown> & {
   id: number;
   name: string;
@@ -40,6 +56,7 @@ type SnailData = Record<string, unknown> & {
   category: { name: string; parent: { name: string } | null } | null;
   assignee: { name: string } | null;
   contacts: ContactData[];
+  locations: LocationData[];
   notes: {
     id: number;
     content: string;
@@ -389,28 +406,195 @@ function ContactsSection({ snailId, initial }: { snailId: number; initial: Conta
   );
 }
 
-function LocationEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
-  const [f, setF] = useState({
-    address: (snail.address as string) || "",
-    city: (snail.city as string) || "",
-    state: (snail.state as string) || "",
-    borough: (snail.borough as string) || "",
-    zip: (snail.zip as string) || "",
-    latitude: snail.latitude ? String(snail.latitude) : "",
-    longitude: snail.longitude ? String(snail.longitude) : "",
-  });
+/* ── locations section (its own CRUD against /api/admin/snails/[id]/locations) ── */
+
+const emptyLocationForm = { label: "", kind: "storefront", address: "", city: "", state: "", borough: "", zip: "", latitude: "", longitude: "", isPublic: true, isPrimary: false };
+type LocationFormState = typeof emptyLocationForm;
+
+function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationFormState) => void }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={labelClass}>Address</label><AddressAutocomplete value={f.address} onChange={(addr, lat, lon) => setF({ ...f, address: addr, ...(lat && lon ? { latitude: lat, longitude: lon } : {}) })} className={inputClass} placeholder="Start typing to search..." /></div>
-        <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Borough</label><select value={f.borough} onChange={(e) => setF({ ...f, borough: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option><option value="Manhattan">Manhattan</option><option value="Brooklyn">Brooklyn</option><option value="Queens">Queens</option><option value="The Bronx">The Bronx</option><option value="Staten Island">Staten Island</option><option value="Other">Other</option></select></div>
-        <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Longitude</label><input value={f.longitude} onChange={(e) => setF({ ...f, longitude: e.target.value })} className={inputClass} /></div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2"><label className={labelClass}>Address *</label><AddressAutocomplete value={f.address} onChange={(addr, lat, lon) => setF({ ...f, address: addr, ...(lat && lon ? { latitude: lat, longitude: lon } : {}) })} className={inputClass} placeholder="Start typing to search..." /></div>
+      <div>
+        <label className={labelClass}>Type</label>
+        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className={`${inputClass} bg-white`}>
+          {locationKinds.map((k) => (<option key={k.value} value={k.value}>{k.label}</option>))}
+        </select>
       </div>
-      <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
+      <div><label className={labelClass}>Label <span className="text-gray-400 font-normal">(optional)</span></label><input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Union Square stall" className={inputClass} /></div>
+      <div><label className={labelClass}>City</label><input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} className={inputClass} /></div>
+      <div><label className={labelClass}>State</label><input value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })} className={inputClass} /></div>
+      <div>
+        <label className={labelClass}>Borough</label>
+        <select value={f.borough} onChange={(e) => setF({ ...f, borough: e.target.value })} className={`${inputClass} bg-white`}>
+          <option value="">Select...</option>
+          {boroughs.map((b) => (<option key={b} value={b}>{b}</option>))}
+        </select>
+      </div>
+      <div><label className={labelClass}>ZIP</label><input value={f.zip} onChange={(e) => setF({ ...f, zip: e.target.value })} className={inputClass} /></div>
+      <div><label className={labelClass}>Latitude</label><input value={f.latitude} onChange={(e) => setF({ ...f, latitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
+      <div><label className={labelClass}>Longitude</label><input value={f.longitude} onChange={(e) => setF({ ...f, longitude: e.target.value })} placeholder="Auto-filled from address" className={inputClass} /></div>
+      <div className="sm:col-span-2 space-y-2">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPrimary} onChange={(e) => setF({ ...f, isPrimary: e.target.checked })} className={checkboxClass} />
+          Main location (address used for submissions)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={f.isPublic} onChange={(e) => setF({ ...f, isPublic: e.target.checked })} className={checkboxClass} />
+          Show on the public map and page
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function LocationRow({ location, snailId, onChange, onRemove }: {
+  location: LocationData;
+  snailId: number;
+  onChange: (l: LocationData) => void;
+  onRemove: (id: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<LocationFormState>({
+    label: location.label || "",
+    kind: location.kind,
+    address: location.address || "",
+    city: location.city || "",
+    state: location.state || "",
+    borough: location.borough || "",
+    zip: location.zip || "",
+    latitude: location.latitude ? String(location.latitude) : "",
+    longitude: location.longitude ? String(location.longitude) : "",
+    isPublic: location.isPublic,
+    isPrimary: location.isPrimary,
+  });
+
+  async function save() {
+    if (!f.address.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(f),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onChange(await res.json());
+      setEditing(false);
+    }
+  }
+
+  async function remove() {
+    if (!confirm(`Remove location "${location.address}"?`)) return;
+    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, { method: "DELETE" });
+    if (res.ok) onRemove(location.id);
+  }
+
+  if (editing) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+        <LocationFields f={f} setF={setF} />
+        <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-gray-900">
+          {location.label || location.address}
+          <span className="ml-2 text-xs font-normal text-gray-500">{locationKindLabel(location.kind)}</span>
+          {location.isPrimary && <span className="ml-2 text-xs font-normal text-amber-700">Main</span>}
+          {location.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
+        </p>
+        <p className="text-xs text-gray-600 mt-0.5">
+          {location.label && <span>{location.address}<span className="mx-1.5 text-gray-300">&middot;</span></span>}
+          {[location.city, location.borough, location.state, location.zip].filter(Boolean).join(", ") || <span className="text-gray-400">No city or ZIP</span>}
+          {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
+        </p>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <button type="button" onClick={() => setEditing(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
+        <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function LocationsSection({ snailId, initial }: { snailId: number; initial: LocationData[] }) {
+  const [locations, setLocations] = useState<LocationData[]>(initial);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<LocationFormState>(emptyLocationForm);
+
+  async function add() {
+    if (!f.address.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/admin/snails/${snailId}/locations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...f, isPrimary: f.isPrimary || locations.length === 0 }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const created = await res.json();
+      // The server demotes the others when this one is the new main location.
+      setLocations((prev) =>
+        created.isPrimary
+          ? [...prev.map((l) => ({ ...l, isPrimary: false })), created]
+          : [...prev, created]
+      );
+      setF(emptyLocationForm);
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-900">Locations</h2>
+        {!adding && (
+          <button type="button" onClick={() => setAdding(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">
+            + Add Location
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+          <LocationFields f={f} setF={setF} />
+          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyLocationForm); }} saving={saving} />
+        </div>
+      )}
+
+      {locations.length === 0 && !adding ? (
+        <p className="text-sm text-gray-400">No locations yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {locations.map((l) => (
+            <LocationRow
+              key={l.id}
+              location={l}
+              snailId={snailId}
+              onChange={(updated) =>
+                setLocations((prev) =>
+                  prev.map((x) =>
+                    x.id === updated.id
+                      ? updated
+                      : // Only one location can be the main one.
+                        updated.isPrimary
+                        ? { ...x, isPrimary: false }
+                        : x
+                  )
+                )
+              }
+              onRemove={(id) => setLocations((prev) => prev.filter((x) => x.id !== id))}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -609,17 +793,8 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         </dl>
       </DetailSection>
 
-      {/* Location */}
-      <DetailSection title="Location" snailId={snail.id} EditForm={(props) => <LocationEditForm {...props} snail={snail} />}>
-        <dl className="grid gap-2 sm:grid-cols-2">
-          <Field label="Address" value={snail.address as string} />
-          <Field label="City" value={snail.city as string} />
-          <Field label="State" value={snail.state as string} />
-          <Field label="Borough" value={snail.borough as string} />
-          <Field label="ZIP" value={snail.zip as string} />
-          {snail.latitude ? <Field label="Coordinates" value={`${snail.latitude}, ${snail.longitude}`} /> : null}
-        </dl>
-      </DetailSection>
+      {/* Locations */}
+      <LocationsSection snailId={snail.id} initial={snail.locations} />
 
       {/* Map & Visibility */}
       <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>

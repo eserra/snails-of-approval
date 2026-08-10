@@ -7,19 +7,25 @@ import { useSearchParams } from "next/navigation";
 
 const Map = dynamic(() => import("@/components/Map"), { ssr: false });
 
-type MapSnail = {
-  slug: string;
-  name: string;
+// One entry per public location, so a snail with several locations has several markers.
+type MapLocation = {
+  id: number;
+  kind: string;
+  label: string | null;
+  address: string | null;
   latitude: string | null;
   longitude: string | null;
+  isPrimary: boolean;
+  slug: string;
+  name: string;
   yearAwarded: number;
-  category: { name: string; slug: string };
+  category: { name: string; slug: string } | null;
   chapter: { name: string; slug: string };
 };
 
 function MapPage() {
   const searchParams = useSearchParams();
-  const [snails, setSnails] = useState<MapSnail[]>([]);
+  const [locations, setLocations] = useState<MapLocation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,7 +33,7 @@ function MapPage() {
     fetch(`/api/snails/map?${searchParams.toString()}`)
       .then((r) => r.json())
       .then((data) => {
-        setSnails(data);
+        setLocations(data);
         setLoading(false);
       });
   }, [searchParams]);
@@ -37,11 +43,11 @@ function MapPage() {
       <div className="p-4 bg-white border-b border-gray-200">
         <Filters />
         <p className="text-sm text-gray-500 mt-2">
-          {loading ? "Loading..." : `${snails.length} locations`}
+          {loading ? "Loading..." : `${locations.length} locations`}
         </p>
       </div>
       <div className="flex-1">
-        <Map snails={snails} />
+        <Map locations={locations} />
       </div>
     </div>
   );

@@ -26,7 +26,17 @@ export async function POST(request: NextRequest) {
   for (const chapter of chapters) {
     const snails = await prisma.snail.findMany({
       where: { chapterId: chapter.id },
-      select: { id: true, name: true, zip: true, onSfusaMap: true },
+      select: {
+        id: true,
+        name: true,
+        onSfusaMap: true,
+        // ZIP matching uses the main location, falling back to the first.
+        locations: {
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          select: { zip: true },
+          take: 1,
+        },
+      },
     });
     if (snails.length === 0) continue;
 
@@ -45,7 +55,8 @@ export async function POST(request: NextRequest) {
     let chapterOnMap = 0;
     for (const s of snails) {
       checked++;
-      const isOn = matchOnMap({ name: s.name, zip: s.zip }, index) !== null;
+      const isOn =
+        matchOnMap({ name: s.name, zip: s.locations[0]?.zip ?? null }, index) !== null;
       if (isOn) {
         onMap++;
         chapterOnMap++;

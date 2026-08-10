@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { contactRoleLabel } from "@/lib/contact-roles";
+import { locationKindLabel } from "@/lib/location-kinds";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -31,6 +32,11 @@ export default async function SnailDetailPage({ params }: Props) {
         where: { isPublic: true },
         orderBy: { createdAt: "asc" },
         select: { id: true, name: true, role: true, email: true, phone: true },
+      },
+      locations: {
+        where: { isPublic: true },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        select: { id: true, kind: true, label: true, address: true, isPrimary: true },
       },
     },
   });
@@ -77,11 +83,16 @@ export default async function SnailDetailPage({ params }: Props) {
         )}
 
         <div className="border-t border-gray-200 pt-4 space-y-3">
-          {snail.address && (
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Address:</span> {snail.address}
+          {snail.locations.map((location) => (
+            <p key={location.id} className="text-sm text-gray-600">
+              <span className="font-medium">
+                {location.label ||
+                  (location.isPrimary ? "Address" : locationKindLabel(location.kind))}
+                :
+              </span>{" "}
+              {location.address}
             </p>
-          )}
+          ))}
           {snail.contacts.map((contact) => (
             <div key={contact.id} className="text-sm text-gray-600">
               <p className="font-medium text-gray-900">

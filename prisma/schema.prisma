@@ -57,9 +57,6 @@ model Snail {
   name         String
   yearAwarded  Int?     @map("year_awarded")
   description  String?  @db.Text
-  address      String?
-  latitude     Decimal? @db.Decimal(10, 7)
-  longitude    Decimal? @db.Decimal(10, 7)
   website      String?
   facebookUrl  String?  @map("facebook_url")
   instagramUrl String?  @map("instagram_url")
@@ -83,11 +80,8 @@ model Snail {
   boardDecision     String?   @map("board_decision") // approved | rejected
   boardDecisionDate DateTime? @map("board_decision_date")
 
-  // Geography
-  city    String?
-  state   String?
-  borough String?
-  zip     String?
+  // Geography lives on Location (a snail may have several); the main one is
+  // Location.isPrimary.
 
   // SFUSA national mapping
   onSfusaMap Boolean @default(false) @map("on_sfusa_map")
@@ -116,6 +110,7 @@ model Snail {
   createdBy   User?     @relation(fields: [createdById], references: [id])
   assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
   contacts    Contact[]
+  locations   Location[]
   notes       Note[]
   attachments Attachment[]
   emails      EmailCache[]
@@ -140,6 +135,29 @@ model Contact {
 
   @@index([snailId])
   @@map("contacts")
+}
+
+model Location {
+  id        Int      @id @default(autoincrement())
+  label     String?
+  kind      String   @default("storefront") // see lib/location-kinds.ts
+  address   String?
+  city      String?
+  state     String?
+  borough   String?
+  zip       String?
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+  isPublic  Boolean  @default(true) @map("is_public")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  snailId Int   @map("snail_id")
+  snail   Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
+
+  @@index([snailId])
+  @@map("locations")
 }
 
 model Note {
