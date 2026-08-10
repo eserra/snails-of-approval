@@ -1,6 +1,6 @@
 import { boroughs } from "./location-kinds";
 
-/** A Nominatim hit, reduced to the fields a Location needs. */
+/** A geocoder hit, reduced to the fields a Location needs. */
 export type ResolvedAddress = {
   address: string;
   city: string;
@@ -11,60 +11,49 @@ export type ResolvedAddress = {
   longitude: string;
 };
 
-export type NominatimAddress = {
-  house_number?: string;
-  road?: string;
-  neighbourhood?: string;
-  suburb?: string;
-  city_district?: string;
-  borough?: string;
-  city?: string;
-  town?: string;
-  village?: string;
-  hamlet?: string;
-  county?: string;
-  state?: string;
-  postcode?: string;
-  ["ISO3166-2-lvl4"]?: string;
-};
-
-export type NominatimResult = {
-  display_name: string;
-  lat: string;
-  lon: string;
-  class: string;
-  type: string;
-  name?: string;
-  address?: NominatimAddress;
+/**
+ * A Photon feature (https://photon.komoot.io). Photon serves the same
+ * OpenStreetMap data as Nominatim but is built for typeahead: it matches
+ * partial input, where Nominatim parses the query as a whole address and gives
+ * up on anything unfinished ("201 West 72nd" returned a road in Utah).
+ *
+ * Nominatim still does the geocoding in lib/geocode.ts, where the address is
+ * complete and one accurate answer matters more than incremental matching.
+ */
+export type PhotonFeature = {
+  geometry: { coordinates: [number, number] }; // [lon, lat]
+  properties: {
+    osm_key?: string;
+    osm_value?: string;
+    type?: string;
+    name?: string;
+    housenumber?: string;
+    street?: string;
+    district?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+    countrycode?: string;
+  };
 };
 
 /**
- * Keep anything that sits on a named street. Business POIs are kept rather than
- * filtered out — OSM frequently has only the business node for a real address
- * (Roberta's is the only record of 261 Moore St), so dropping them by class loses
- * the address entirely. The business name is discarded instead: every label and
- * stored value below is rebuilt from the structured fields, so "The Village
- * Underground" never reaches the address input. What this does drop is results
- * with no street at all — cities, counties, parks, regions.
+ * Keep anything that sits on a named street, in the US. Business POIs are kept
+ * rather than filtered out — OSM frequently has only the business node for a
+ * real address (Roberta's is the only record of 261 Moore St), so dropping them
+ * would lose the address entirely. The business name is discarded instead:
+ * every label and stored value below is rebuilt from the structured fields, so
+ * "The Village Underground" never reaches the address input. What this does
+ * drop is results with no street at all — cities, parks, regions.
  */
-export function isAddressResult(r: NominatimResult): boolean {
-  return !!r.address?.road;
+export function isAddressResult(f: PhotonFeature): boolean {
+  const p = f.properties;
+  return !!p.street && (p.countrycode ?? "US") === "US";
 }
 
-/**
- * Identity of a street address, ignoring the postcode: several POIs at one
- * address can disagree on the ZIP (130 West 3rd Street comes back as both 10012
- * and 10014), and showing that twice looks like two different places.
- */
-export function addressKey(r: NominatimResult): string {
-  const a = resolveAddress(r);
-  return [a.address, a.borough, a.city, a.state]
-    .map((p) => p.trim().toLowerCase())
-    .join("|");
-}
-
-// Nominatim usually reports the borough as `suburb`; county is the fallback for
-// the records that omit it.
+// Photon reports the borough as `district`; county is the fallback for records
+// that omit it.
 const COUNTY_TO_BOROUGH: Record<string, string> = {
   "new york county": "Manhattan",
   "kings county": "Brooklyn",
@@ -83,53 +72,86 @@ function matchBorough(value?: string): string {
 }
 
 /** The NYC borough for an address, or "" when it isn't in one. */
-export function boroughFor(a: NominatimAddress): string {
-  for (const field of [a.borough, a.suburb, a.city_district]) {
+export function boroughFor(p: PhotonFeature["properties"]): string {
+  for (const field of [p.district, p.city]) {
     const match = matchBorough(field);
     if (match) return match;
   }
-  return COUNTY_TO_BOROUGH[(a.county || "").trim().toLowerCase()] || "";
+  return COUNTY_TO_BOROUGH[(p.county || "").trim().toLowerCase()] || "";
 }
 
-/** "New York" -> "NY", via the ISO code Nominatim already provides. */
-function stateCode(a: NominatimAddress): string {
-  const iso = a["ISO3166-2-lvl4"];
-  if (iso?.startsWith("US-")) return iso.slice(3);
-  return a.state || "";
+// Photon returns the state as either a code or a full name ("NY" for one
+// result, "New York" for the next), and the SFUSA form wants the code.
+const STATE_CODES: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", "district of columbia": "DC",
+  florida: "FL", georgia: "GA", hawaii: "HI", idaho: "ID", illinois: "IL",
+  indiana: "IN", iowa: "IA", kansas: "KS", kentucky: "KY", louisiana: "LA",
+  maine: "ME", maryland: "MD", massachusetts: "MA", michigan: "MI",
+  minnesota: "MN", mississippi: "MS", missouri: "MO", montana: "MT",
+  nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
+  "new mexico": "NM", "new york": "NY", "north carolina": "NC",
+  "north dakota": "ND", ohio: "OH", oklahoma: "OK", oregon: "OR",
+  pennsylvania: "PA", "puerto rico": "PR", "rhode island": "RI",
+  "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX",
+  utah: "UT", vermont: "VT", virginia: "VA", washington: "WA",
+  "west virginia": "WV", wisconsin: "WI", wyoming: "WY",
+};
+
+function stateCode(state?: string): string {
+  if (!state) return "";
+  const trimmed = state.trim();
+  if (/^[A-Za-z]{2}$/.test(trimmed)) return trimmed.toUpperCase();
+  return STATE_CODES[trimmed.toLowerCase()] ?? trimmed;
 }
 
-function streetLine(r: NominatimResult): string {
-  const a = r.address || {};
-  const line = [a.house_number, a.road].filter(Boolean).join(" ");
-  // A result with no road at all (rare) still has its display_name to fall back on.
-  return line || a.road || r.display_name.split(",")[0] || "";
+function streetLine(p: PhotonFeature["properties"]): string {
+  return [p.housenumber, p.street].filter(Boolean).join(" ");
 }
 
-export function resolveAddress(r: NominatimResult): ResolvedAddress {
-  const a = r.address || {};
+export function resolveAddress(f: PhotonFeature): ResolvedAddress {
+  const p = f.properties;
+  const [lon, lat] = f.geometry.coordinates;
   return {
-    address: streetLine(r),
-    city: a.city || a.town || a.village || a.hamlet || "",
-    state: stateCode(a),
-    zip: a.postcode || "",
-    borough: boroughFor(a),
-    latitude: r.lat,
-    longitude: r.lon,
+    address: streetLine(p),
+    city: p.city || "",
+    state: stateCode(p.state),
+    zip: p.postcode || "",
+    borough: boroughFor(p),
+    latitude: String(lat),
+    longitude: String(lon),
   };
 }
 
 /**
- * The suggestion text: street, borough, city, state ZIP. Deliberately drops the
- * neighbourhood and county that clutter Nominatim's display_name (a result in
- * "University Village, Manhattan, New York County, New York" reads as
- * "130 West 3rd Street, Manhattan, New York, NY 10012").
+ * Identity of a street address, ignoring the postcode: several POIs at one
+ * address can disagree on the ZIP, and showing that twice looks like two
+ * different places.
  */
-export function formatSuggestion(r: NominatimResult): string {
-  const resolved = resolveAddress(r);
+export function addressKey(f: PhotonFeature): string {
+  const a = resolveAddress(f);
+  return [a.address, a.borough, a.city, a.state]
+    .map((part) => part.trim().toLowerCase())
+    .join("|");
+}
+
+/**
+ * The suggestion text: street, borough, city, state ZIP. Built from the
+ * structured fields so the business name and administrative clutter never
+ * appear ("201 West 72nd Street, Manhattan, New York, NY 10023").
+ */
+export function formatSuggestion(f: PhotonFeature): string {
+  const resolved = resolveAddress(f);
+  // Photon reports a borough as both district and city ("Brooklyn, Brooklyn"),
+  // so only show the city when it adds something.
+  const city =
+    resolved.city.toLowerCase() === resolved.borough.toLowerCase()
+      ? ""
+      : resolved.city;
   return [
     resolved.address,
     resolved.borough,
-    resolved.city,
+    city,
     [resolved.state, resolved.zip].filter(Boolean).join(" "),
   ]
     .filter(Boolean)

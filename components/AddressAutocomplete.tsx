@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  type NominatimResult,
+  type PhotonFeature,
   type ResolvedAddress,
   addressKey,
   formatSuggestion,
@@ -72,19 +72,20 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = new URL("https://nominatim.openstreetmap.org/search");
+        // Photon rather than Nominatim: it matches partial input, which is what
+        // an autocomplete gets. Nominatim parses the query as a finished address
+        // and mismatches badly on anything half-typed.
+        const url = new URL("https://photon.komoot.io/api/");
         url.searchParams.set("q", val);
-        url.searchParams.set("format", "json");
         // Over-fetch: several businesses often share one street address, and the
         // duplicates collapse into a single suggestion below.
         url.searchParams.set("limit", "10");
-        url.searchParams.set("countrycodes", "us");
-        url.searchParams.set("addressdetails", "1");
         const res = await fetch(url.toString(), {
           headers: { "User-Agent": "SnailsOfApproval/1.0" },
         });
         if (res.ok) {
-          const data: NominatimResult[] = await res.json();
+          const body = await res.json();
+          const data: PhotonFeature[] = body.features ?? [];
           const addresses = data.filter(isAddressResult);
           // Distinct addresses only — several businesses often share one street address.
           const seen = new Set<string>();
