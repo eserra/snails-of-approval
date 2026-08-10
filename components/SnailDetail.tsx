@@ -860,6 +860,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         track={snail.track}
         currentStage={snail.stage || ""}
         attachments={attachments.map((a) => ({ category: a.category }))}
+        recommendation={snail.recommendation as string | null}
         snailId={snail.id}
         onStageChange={() => window.location.reload()}
       />

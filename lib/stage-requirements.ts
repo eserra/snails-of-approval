@@ -28,6 +28,15 @@ export const stageRequirements: Record<string, StageRequirement[]> = {
       label: "Site Visit Report",
     },
   ],
+  // The committee writes this after the application and the site visit; the board
+  // votes on it, so it has to exist before a snail is submitted for review.
+  board_review: [
+    {
+      type: "field",
+      field: "recommendation",
+      label: "Committee recommendation",
+    },
+  ],
 };
 
 /** CTA hints encouraging the volunteer to advance the snail to the next stage */
@@ -35,7 +44,7 @@ export const stageCTAHints: Record<string, string> = {
   new: "Reach out to this lead",
   contacted: "Send or collect the application form",
   applied: "Schedule a site visit",
-  visited: "Submit to the board for a vote",
+  visited: "Write the committee recommendation, then submit to the board",
   board_review: "Record the board's decision below",
   deferred: "Applicant may reapply when ready — reopen to continue",
   onboarding: "Deliver the award package: stickers, digital assets, welcome letter, certificate",

@@ -13,6 +13,8 @@ type PipelineProgressProps = {
   track: string;
   currentStage: string;
   attachments?: { category: string }[];
+  /** Needed so the board_review field requirement can be evaluated. */
+  recommendation?: string | null;
   snailId?: number;
   onStageChange?: () => void;
 };
@@ -21,6 +23,7 @@ export default function PipelineProgress({
   track,
   currentStage,
   attachments = [],
+  recommendation,
   snailId,
   onStageChange,
 }: PipelineProgressProps) {
@@ -40,7 +43,7 @@ export default function PipelineProgress({
 
   const nextStage = !isSideTrack && !isLastStage ? stages[currentIndex + 1] : null;
   const nextWarnings = nextStage
-    ? validateStageChange(nextStage, { attachments })
+    ? validateStageChange(nextStage, { attachments, recommendation })
     : [];
   const hasUnmetNext = nextWarnings.some((w) => !w.met);
 
@@ -114,7 +117,7 @@ export default function PipelineProgress({
           const isNext = !isSideTrack && i === activeIndex + 1;
 
           const warnings = isFuture
-            ? validateStageChange(stage, { attachments })
+            ? validateStageChange(stage, { attachments, recommendation })
             : [];
           const hasUnmetReqs = warnings.some((w) => !w.met);
           const reqLabels = (stageRequirements[stage] || []).map(
