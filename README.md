@@ -20,6 +20,40 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Admin operations
+
+Operational scripts live in `prisma/` and take the target database from
+`DATABASE_URL`. To run one against **production**, prefix it with the production
+connection string (never commit it):
+
+```bash
+DATABASE_URL="<production connection string>" <command>
+```
+
+### Reset a user's password
+
+For a locked-out user (e.g. a forgotten admin password). Signed-in users can
+change their own password from **`/admin/account`**; this script is the recovery
+path for when you can't log in.
+
+```bash
+# note the leading space — keeps the password out of shell history
+ DATABASE_URL="<prod>" npx tsx prisma/set-password.ts <email> '<new-password>'
+```
+
+It hashes with bcrypt (cost 12, matching the app) and **looks the user up
+first**, so a wrong or renamed email fails loudly instead of silently updating
+nothing. Note that production accounts use the `@slowfoodnyc.org` domain.
+
+### Seed categories
+
+Populates (or refreshes) the SFUSA category taxonomy without touching users or
+chapters — safe to run against production:
+
+```bash
+DATABASE_URL="<prod>" npm run seed:categories
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
