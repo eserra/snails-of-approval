@@ -16,6 +16,10 @@ Typing an address used to suggest **business names** — searching "130 W 3rd St
 
 Now you get clean street addresses only. Picking one fills in the **address, city, state, ZIP and borough separately**, with the state as a two-letter code and the borough matched automatically for New York. Several businesses at the same address collapse into a single suggestion.
 
+**Search also understands half-typed addresses now.** "201 West 72nd" used to return a road in Utah — you had to remember to type "St" before it found anything sensible. It now finds the right address as you type.
+
+**And it looks nearby first.** Results are ranked around the chapter you're working in, or around the snail's existing address when it has one, so local matches come up before same-named streets in other states. Addresses elsewhere still appear, just further down.
+
 ### Contacts and locations
 
 - Every snail now needs **at least one contact and one location** before it can be created, and you can't delete the last one.
