@@ -861,94 +861,17 @@ function formatAmount(amount: string | null): string | null {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function CheckInsSection({
-  snailId,
-  checkIns,
-  setCheckIns,
-}: {
-  snailId: number;
-  checkIns: CheckInData[];
-  setCheckIns: React.Dispatch<React.SetStateAction<CheckInData[]>>;
-}) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [visitedAt, setVisitedAt] = useState(today);
-  const [partySize, setPartySize] = useState("1");
-  const [occasion, setOccasion] = useState("");
-  const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const canSubmit = notes.trim() !== "" && visitedAt !== "" && Number(partySize) >= 1;
-
-  async function handleAdd() {
-    if (!canSubmit) return;
-    setSaving(true);
-    setError(null);
-    const res = await fetch(`/api/admin/snails/${snailId}/checkins`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visitedAt, partySize, occasion, amount, notes }),
-    });
-    if (res.ok) {
-      const checkIn = await res.json();
-      setCheckIns((prev) => [checkIn, ...prev]);
-      setVisitedAt(today);
-      setPartySize("1");
-      setOccasion("");
-      setAmount("");
-      setNotes("");
-    } else {
-      const body = await res.json().catch(() => null);
-      setError(body?.error || "Could not save check-in.");
-    }
-    setSaving(false);
-  }
-
+function CheckInsSection({ checkIns }: { checkIns: CheckInData[] }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold text-gray-900">Check-ins</h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Record a visit or meaningful engagement with this snail.
+      <h2 className="text-sm font-semibold text-gray-900">Check-ins</h2>
+
+      {checkIns.length === 0 ? (
+        <p className="text-sm text-gray-500">
+          No check-ins yet. Use “Check in” above to record a visit.
         </p>
-      </div>
-
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className={labelClass}>Visit date</label>
-            <input type="date" value={visitedAt} max={today} onChange={(e) => setVisitedAt(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>People</label>
-            <input type="number" min={1} value={partySize} onChange={(e) => setPartySize(e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>
-              Amount spent <span className="font-normal text-gray-400">(optional)</span>
-            </label>
-            <input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="$" className={inputClass} />
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>
-            Occasion <span className="font-normal text-gray-400">(optional)</span>
-          </label>
-          <input type="text" value={occasion} onChange={(e) => setOccasion(e.target.value)} placeholder="e.g. dinner, chapter event" className={inputClass} />
-        </div>
-        <div>
-          <label className={labelClass}>Notes</label>
-          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="How did the visit go?" className={inputClass} />
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="button" onClick={handleAdd} disabled={saving || !canSubmit} className="bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors">
-          {saving ? "Saving..." : "Record check-in"}
-        </button>
-      </div>
-
-      {checkIns.length > 0 && (
-        <div className="space-y-3 border-t border-gray-100 pt-4">
+      ) : (
+        <div className="space-y-3">
           {checkIns.map((checkIn) => {
             const money = formatAmount(checkIn.amount);
             return (
@@ -979,7 +902,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [notes, setNotes] = useState(snail.notes);
-  const [checkIns, setCheckIns] = useState(snail.checkIns);
   const [attachments, setAttachments] = useState(snail.attachments);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -1212,7 +1134,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </div>
 
       {/* Check-ins */}
-      <CheckInsSection snailId={snail.id} checkIns={checkIns} setCheckIns={setCheckIns} />
+      <CheckInsSection checkIns={snail.checkIns} />
 
       {/* Emails */}
       {primaryContactEmail && (

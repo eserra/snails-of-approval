@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
+import CheckInModal from "@/components/CheckInModal";
 
 type Snail = {
   id: number;
@@ -65,6 +66,7 @@ export default function AdminSnailsPage() {
   const [mcSyncing, setMcSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [mcReport, setMcReport] = useState<McReport | null>(null);
+  const [checkInFor, setCheckInFor] = useState<Snail | null>(null);
 
   function loadSnails() {
     return fetch("/api/admin/snails")
@@ -312,7 +314,13 @@ export default function AdminSnailsPage() {
                     <td className="px-4 py-3 text-gray-600">
                       {snail.assignee?.name || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => setCheckInFor(snail)}
+                        className="text-amber-700 hover:text-amber-800 text-sm font-medium mr-4"
+                      >
+                        Check in
+                      </button>
                       <button
                         onClick={() => handleDelete(snail.id, snail.name)}
                         className="text-red-600 hover:text-red-700 text-sm font-medium"
@@ -326,6 +334,14 @@ export default function AdminSnailsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {checkInFor && (
+        <CheckInModal
+          snailId={checkInFor.id}
+          snailName={checkInFor.name}
+          onClose={() => setCheckInFor(null)}
+        />
       )}
     </div>
   );
