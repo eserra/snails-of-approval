@@ -64,6 +64,7 @@ export default function AdminSnailsPage() {
   const [notOnMapOnly, setNotOnMapOnly] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [mcSyncing, setMcSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [mcReport, setMcReport] = useState<McReport | null>(null);
   const [checkInFor, setCheckInFor] = useState<Snail | null>(null);
@@ -100,6 +101,33 @@ export default function AdminSnailsPage() {
       setSyncResult("Sync failed");
     }
     setSyncing(false);
+  }
+
+  // Downloads the CRM directory as an .xlsx. We fetch it as a blob (rather than
+  // navigating) so we can show a spinner and surface a failure inline, and honor
+  // the filename the server stamps into Content-Disposition.
+  async function handleExport() {
+    setExporting(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/export");
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const filename =
+        res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
+        "snails-of-approval.xlsx";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setSyncResult("Export failed");
+    }
+    setExporting(false);
   }
 
   async function handleSyncMailchimp() {
@@ -166,6 +194,14 @@ export default function AdminSnailsPage() {
             title="Push contacts to Mailchimp and refresh audience segments"
           >
             {mcSyncing ? "Syncing…" : "Sync to Mailchimp"}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            title="Download the full CRM directory as a spreadsheet"
+          >
+            {exporting ? "Exporting…" : "Export"}
           </button>
           <Link
             href="/admin/snails/new"
