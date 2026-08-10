@@ -64,7 +64,6 @@ const columns: { header: string; get: (s: ExportSnail) => Cell }[] = [
   { header: "Track", get: (s) => s.track },
   { header: "Stage", get: (s) => stageLabel(s.stage) },
   { header: "Former Awardee", get: (s) => yesNo(s.formerAwardee) },
-  { header: "Renewal Due Year", get: (s) => s.renewalDueYear ?? "" },
   { header: "Business Status", get: (s) => businessStatusLabel(s.businessStatus) },
   { header: "Source", get: (s) => s.source ?? "" },
   { header: "Blocked Reason", get: (s) => s.blockedReason ?? "" },
