@@ -65,6 +65,7 @@ type SnailData = Record<string, unknown> & {
     createdAt: string;
     author: { name: string };
   }[];
+  checkIns: CheckInData[];
   attachments: {
     id: number;
     fileName: string;
@@ -75,6 +76,17 @@ type SnailData = Record<string, unknown> & {
     createdAt: string;
     uploadedBy: { name: string };
   }[];
+};
+
+type CheckInData = {
+  id: number;
+  visitedAt: string;
+  partySize: number;
+  occasion: string | null;
+  amount: string | null;
+  notes: string;
+  createdAt: string;
+  author: { name: string };
 };
 
 type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
@@ -840,6 +852,49 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
   );
 }
 
+/* ── check-ins ── */
+
+function formatAmount(amount: string | null): string | null {
+  if (amount === null) return null;
+  const n = Number(amount);
+  if (isNaN(n)) return null;
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function CheckInsSection({ checkIns }: { checkIns: CheckInData[] }) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+      <h2 className="text-sm font-semibold text-gray-900">Check-ins</h2>
+
+      {checkIns.length === 0 ? (
+        <p className="text-sm text-gray-500">
+          No check-ins yet. Use “Check in” above to record a visit.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {checkIns.map((checkIn) => {
+            const money = formatAmount(checkIn.amount);
+            return (
+              <div key={checkIn.id} className="border border-gray-100 rounded-lg p-3">
+                <p className="text-sm text-gray-900 whitespace-pre-line">{checkIn.notes}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {checkIn.author.name}
+                  {" · "}
+                  {new Date(checkIn.visitedAt).toLocaleDateString()}
+                  {" · "}
+                  {checkIn.partySize} {checkIn.partySize === 1 ? "person" : "people"}
+                  {checkIn.occasion ? ` · ${checkIn.occasion}` : ""}
+                  {money ? ` · ${money}` : ""}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── main detail component ── */
 
 export default function SnailDetail({ snail }: { snail: SnailData }) {
@@ -1077,6 +1132,9 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
           </div>
         )}
       </div>
+
+      {/* Check-ins */}
+      <CheckInsSection checkIns={snail.checkIns} />
 
       {/* Emails */}
       {primaryContactEmail && (

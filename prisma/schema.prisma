@@ -18,6 +18,7 @@ model User {
   snails              Snail[]
   assignedSnails      Snail[]      @relation("assignedSnails")
   authoredNotes       Note[]       @relation("authoredNotes")
+  authoredCheckIns    CheckIn[]    @relation("authoredCheckIns")
   uploadedAttachments Attachment[] @relation("uploadedAttachments")
   gmailAccount        GmailAccount?
 
@@ -112,6 +113,7 @@ model Snail {
   contacts    Contact[]
   locations   Location[]
   notes       Note[]
+  checkIns    CheckIn[]
   attachments Attachment[]
   emails      EmailCache[]
 
@@ -171,6 +173,25 @@ model Note {
   author   User  @relation("authoredNotes", fields: [authorId], references: [id])
 
   @@map("notes")
+}
+
+model CheckIn {
+  id        Int      @id @default(autoincrement())
+  visitedAt DateTime @map("visited_at")   // date of the visit / engagement
+  partySize Int      @map("party_size")   // number of people present
+  occasion  String?                       // optional — what the occasion was
+  amount    Decimal? @db.Decimal(10, 2)   // optional — $ spent at the snail
+  notes     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  snailId  Int   @map("snail_id")
+  snail    Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
+  authorId Int   @map("author_id")
+  author   User  @relation("authoredCheckIns", fields: [authorId], references: [id])
+
+  @@index([snailId])
+  @@index([visitedAt])
+  @@map("check_ins")
 }
 
 model Attachment {
