@@ -809,7 +809,6 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
   const [f, setF] = useState({
     assigneeId: snail.assigneeId ? String(snail.assigneeId) : "",
     lastTouchDate: snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toISOString().split("T")[0] : "",
-    renewalDueYear: snail.renewalDueYear != null ? String(snail.renewalDueYear) : "",
     welcomeLetterSent: snail.welcomeLetterSent as boolean,
     stickersDelivered: snail.stickersDelivered as boolean,
     digitalAssetsSent: snail.digitalAssetsSent as boolean,
@@ -825,7 +824,6 @@ function TrackingEditForm({ onSave, onCancel, saving, snail, users }: EditFormPr
       <div className="grid gap-4 sm:grid-cols-2">
         <div><label className={labelClass}>Assignee</label><select value={f.assigneeId} onChange={(e) => setF({ ...f, assigneeId: e.target.value })} className={`${inputClass} bg-white`}><option value="">Unassigned</option>{users.map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}</select></div>
         <div><label className={labelClass}>Last Touch Date</label><input type="date" value={f.lastTouchDate} onChange={(e) => setF({ ...f, lastTouchDate: e.target.value })} className={inputClass} /></div>
-        <div><label className={labelClass}>Renewal Due Year</label><input type="number" value={f.renewalDueYear} onChange={(e) => setF({ ...f, renewalDueYear: e.target.value })} className={inputClass} /></div>
       </div>
       {isActive && (
       <fieldset className="rounded-lg border border-gray-200 p-3">
@@ -1057,7 +1055,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Assignee" value={snail.assignee?.name} />
           <Field label="Last Touch" value={snail.lastTouchDate ? new Date(snail.lastTouchDate as string).toLocaleDateString() : null} />
-          <Field label="Renewal Due Year" value={snail.renewalDueYear ? String(snail.renewalDueYear) : null} />
         </dl>
         {/* The award package and its announcement only exist once the board has
             approved and the snail is an active awardee. */}

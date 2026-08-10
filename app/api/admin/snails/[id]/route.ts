@@ -83,10 +83,6 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 
   if ("yearAwarded" in body)
     data.yearAwarded = body.yearAwarded ? parseInt(body.yearAwarded) : null;
-  if ("renewalDueYear" in body)
-    data.renewalDueYear = body.renewalDueYear
-      ? parseInt(body.renewalDueYear)
-      : null;
   if ("categoryId" in body)
     data.categoryId = body.categoryId ? parseInt(body.categoryId) : null;
   if ("chapterId" in body) data.chapterId = parseInt(body.chapterId);

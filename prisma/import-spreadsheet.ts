@@ -144,7 +144,6 @@ async function main() {
 
     // Parse numeric fields
     const yearAwarded = parseIntOrNull(row["Latest SOA Award Year"]);
-    const renewalDueYear = parseIntOrNull(row["Renewal Due Year"]);
     const zip = str(row["ZIP"])?.replace(/\.0$/, "") || null;
 
     // Parse date
@@ -182,7 +181,6 @@ async function main() {
       track,
       stage,
       formerAwardee,
-      renewalDueYear,
       businessStatus,
       source,
       blockedReason,

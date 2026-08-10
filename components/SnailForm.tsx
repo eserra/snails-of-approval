@@ -87,7 +87,6 @@ type SnailData = {
   track: string;
   stage: string;
   formerAwardee: boolean;
-  renewalDueYear: string;
   businessStatus: string;
   source: string;
   blockedReason: string;
@@ -120,7 +119,6 @@ const emptySnail: SnailData = {
   track: "lead",
   stage: "new",
   formerAwardee: false,
-  renewalDueYear: "",
   businessStatus: "",
   source: "",
   blockedReason: "",
@@ -994,16 +992,6 @@ export default function SnailForm({
               type="date"
               value={form.lastTouchDate}
               onChange={(e) => update("lastTouchDate", e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Renewal Due Year</label>
-            <input
-              type="number"
-              value={form.renewalDueYear}
-              onChange={(e) => update("renewalDueYear", e.target.value)}
               className={inputClass}
             />
           </div>
