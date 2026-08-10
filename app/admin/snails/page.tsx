@@ -13,7 +13,6 @@ type Snail = {
   track: string;
   stage: string | null;
   formerAwardee: boolean;
-  establishmentType: string | null;
   onSfusaMap: boolean;
   assigneeId: number | null;
   chapter: { name: string };
@@ -228,9 +227,6 @@ export default function AdminSnailsPage() {
                     SFUSA Category
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
-                    SFNYC Legacy
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">
                     Stage
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">
@@ -272,9 +268,6 @@ export default function AdminSnailsPage() {
                           {snail.category.name}
                         </>
                       ) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400">
-                      {snail.establishmentType || "—"}
                     </td>
                     <td className="px-4 py-3">
                       {snail.stage && (
