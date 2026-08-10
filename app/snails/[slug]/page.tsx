@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { contactRoleLabel } from "@/lib/contact-roles";
 import { locationKindLabel } from "@/lib/location-kinds";
+import { instagramUrlFromHandle } from "@/lib/instagram";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -142,7 +143,7 @@ export default async function SnailDetailPage({ params }: Props) {
             )}
             {snail.instagramUrl && (
               <a
-                href={snail.instagramUrl}
+                href={instagramUrlFromHandle(snail.instagramUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-amber-700 hover:text-amber-800"
