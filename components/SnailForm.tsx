@@ -10,6 +10,7 @@ import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib
 import { contactRoles } from "@/lib/contact-roles";
 import { businessStatuses } from "@/lib/business-status";
 import { locationKinds, boroughs } from "@/lib/location-kinds";
+import type { ResolvedAddress } from "@/lib/address";
 import PipelineProgress from "./PipelineProgress";
 
 type Chapter = { id: number; name: string };
@@ -253,6 +254,28 @@ export default function SnailForm({
           : i === index
             ? { ...l, [field]: value }
             : l
+      ),
+    }));
+  }
+
+  /** Picking a suggestion fills the whole address block, not just the street. */
+  function applyLocationAddress(index: number, resolved: ResolvedAddress) {
+    setForm((prev) => ({
+      ...prev,
+      locations: prev.locations.map((l, i) =>
+        i === index
+          ? {
+              ...l,
+              address: resolved.address,
+              city: resolved.city,
+              state: resolved.state,
+              zip: resolved.zip,
+              // Boroughs only apply to NYC; leave whatever is there otherwise.
+              borough: resolved.borough || l.borough,
+              latitude: resolved.latitude,
+              longitude: resolved.longitude,
+            }
+          : l
       ),
     }));
   }
@@ -620,13 +643,8 @@ export default function SnailForm({
                 <label className={labelClass}>Address *</label>
                 <AddressAutocomplete
                   value={location.address}
-                  onChange={(address, lat, lon) => {
-                    updateLocation(i, "address", address);
-                    if (lat && lon) {
-                      updateLocation(i, "latitude", lat);
-                      updateLocation(i, "longitude", lon);
-                    }
-                  }}
+                  onChange={(address) => updateLocation(i, "address", address)}
+                  onSelect={(resolved) => applyLocationAddress(i, resolved)}
                   placeholder="Start typing to search..."
                   className={inputClass}
                 />

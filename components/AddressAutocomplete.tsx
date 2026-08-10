@@ -1,16 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import {
+  type NominatimResult,
+  type ResolvedAddress,
+  addressKey,
+  formatSuggestion,
+  isAddressResult,
+  resolveAddress,
+} from "@/lib/address";
 
-type NominatimResult = {
-  display_name: string;
-  lat: string;
-  lon: string;
-};
+type Suggestion = { label: string; resolved: ResolvedAddress };
 
 type Props = {
   value: string;
-  onChange: (address: string, lat?: string, lon?: string) => void;
+  /** Fires on every keystroke, with the raw text. */
+  onChange: (address: string) => void;
+  /** Fires when a suggestion is picked, with the address split into fields. */
+  onSelect?: (resolved: ResolvedAddress) => void;
   className?: string;
   placeholder?: string;
 };
@@ -18,13 +25,15 @@ type Props = {
 export default function AddressAutocomplete({
   value,
   onChange,
+  onSelect,
   className,
   placeholder,
 }: Props) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [noStreet, setNoStreet] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -56,6 +65,7 @@ export default function AddressAutocomplete({
     if (val.length < 5) {
       setResults([]);
       setOpen(false);
+      setNoStreet(false);
       return;
     }
 
@@ -65,15 +75,32 @@ export default function AddressAutocomplete({
         const url = new URL("https://nominatim.openstreetmap.org/search");
         url.searchParams.set("q", val);
         url.searchParams.set("format", "json");
-        url.searchParams.set("limit", "5");
+        // Over-fetch: several businesses often share one street address, and the
+        // duplicates collapse into a single suggestion below.
+        url.searchParams.set("limit", "10");
         url.searchParams.set("countrycodes", "us");
+        url.searchParams.set("addressdetails", "1");
         const res = await fetch(url.toString(), {
           headers: { "User-Agent": "SnailsOfApproval/1.0" },
         });
         if (res.ok) {
           const data: NominatimResult[] = await res.json();
-          setResults(data);
-          setOpen(data.length > 0);
+          const addresses = data.filter(isAddressResult);
+          // Distinct addresses only — several businesses often share one street address.
+          const seen = new Set<string>();
+          const suggestions: Suggestion[] = [];
+          for (const r of addresses) {
+            const key = addressKey(r);
+            const label = formatSuggestion(r);
+            if (!label || seen.has(key)) continue;
+            seen.add(key);
+            suggestions.push({ label, resolved: resolveAddress(r) });
+            if (suggestions.length === 5) break;
+          }
+          setResults(suggestions);
+          // Nothing matched had a street — say so rather than showing an empty box.
+          setNoStreet(suggestions.length === 0 && data.length > 0);
+          setOpen(suggestions.length > 0 || data.length > 0);
         }
       } catch {
         // Silently fail — user can still type manually
@@ -83,11 +110,13 @@ export default function AddressAutocomplete({
     }, 400);
   }
 
-  function handleSelect(result: NominatimResult) {
-    setQuery(result.display_name);
-    onChange(result.display_name, result.lat, result.lon);
+  function handleSelect(suggestion: Suggestion) {
+    setQuery(suggestion.resolved.address);
+    onChange(suggestion.resolved.address);
+    onSelect?.(suggestion.resolved);
     setOpen(false);
     setResults([]);
+    setNoStreet(false);
   }
 
   return (
@@ -96,7 +125,7 @@ export default function AddressAutocomplete({
         type="text"
         value={query}
         onChange={(e) => handleInput(e.target.value)}
-        onFocus={() => results.length > 0 && setOpen(true)}
+        onFocus={() => (results.length > 0 || noStreet) && setOpen(true)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
         className={className}
         placeholder={placeholder}
@@ -106,19 +135,25 @@ export default function AddressAutocomplete({
           Searching...
         </div>
       )}
-      {open && results.length > 0 && (
+      {open && (results.length > 0 || noStreet) && (
         <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {results.map((r, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                onClick={() => handleSelect(r)}
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-900 transition-colors"
-              >
-                {r.display_name}
-              </button>
+          {noStreet ? (
+            <li className="px-3 py-2 text-sm text-gray-400">
+              No street address matched. Try a house number and street.
             </li>
-          ))}
+          ) : (
+            results.map((s, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(s)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-900 transition-colors"
+                >
+                  {s.label}
+                </button>
+              </li>
+            ))
+          )}
         </ul>
       )}
     </div>

@@ -430,7 +430,27 @@ type LocationFormState = typeof emptyLocationForm;
 function LocationFields({ f, setF }: { f: LocationFormState; setF: (f: LocationFormState) => void }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="sm:col-span-2"><label className={labelClass}>Address *</label><AddressAutocomplete value={f.address} onChange={(addr, lat, lon) => setF({ ...f, address: addr, ...(lat && lon ? { latitude: lat, longitude: lon } : {}) })} className={inputClass} placeholder="Start typing to search..." /></div>
+      <div className="sm:col-span-2">
+        <label className={labelClass}>Address *</label>
+        <AddressAutocomplete
+          value={f.address}
+          onChange={(addr) => setF({ ...f, address: addr })}
+          // Picking a suggestion fills the whole address block, not just the street.
+          onSelect={(r) => setF({
+            ...f,
+            address: r.address,
+            city: r.city,
+            state: r.state,
+            zip: r.zip,
+            // Boroughs only apply to NYC; leave whatever is there otherwise.
+            borough: r.borough || f.borough,
+            latitude: r.latitude,
+            longitude: r.longitude,
+          })}
+          className={inputClass}
+          placeholder="Start typing to search..."
+        />
+      </div>
       <div>
         <label className={labelClass}>Type</label>
         <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className={`${inputClass} bg-white`}>
