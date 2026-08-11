@@ -1,5 +1,7 @@
 "use client";
 
+import { stageLabel } from "@/lib/pipeline-stages";
+
 type FunnelStage = {
   stage: string;
   count: number;
@@ -10,11 +12,11 @@ type LeadsFunnelProps = {
 };
 
 const stageColors: Record<string, { bg: string; text: string }> = {
-  New: { bg: "bg-gray-200", text: "text-gray-700" },
-  Contacted: { bg: "bg-amber-200", text: "text-amber-800" },
-  "Application Filled": { bg: "bg-blue-200", text: "text-blue-800" },
-  "Site Visit Completed": { bg: "bg-indigo-200", text: "text-indigo-800" },
-  "Up for Vote": { bg: "bg-purple-200", text: "text-purple-800" },
+  new: { bg: "bg-gray-200", text: "text-gray-700" },
+  contacted: { bg: "bg-amber-200", text: "text-amber-800" },
+  applied: { bg: "bg-blue-200", text: "text-blue-800" },
+  visited: { bg: "bg-indigo-200", text: "text-indigo-800" },
+  board_review: { bg: "bg-purple-200", text: "text-purple-800" },
 };
 
 export default function LeadsFunnel({ stages }: LeadsFunnelProps) {
@@ -68,7 +70,7 @@ export default function LeadsFunnel({ stages }: LeadsFunnelProps) {
               >
                 <div className={`flex items-center justify-between gap-2 ${colors.text}`}>
                   <span className="text-sm font-medium truncate">
-                    {s.stage}
+                    {stageLabel(s.stage)}
                   </span>
                   <span className="text-sm font-bold tabular-nums shrink-0">
                     {s.count}
