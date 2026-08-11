@@ -346,33 +346,74 @@ function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactForm
   );
 }
 
-function ContactRow({ contact, snailId, onList }: {
-  contact: ContactData;
+/* ── generic relation section: one CRUD flow for contacts and locations ──
+ *
+ * Both sections speak to /api/admin/snails/[id]/<resource>, where every
+ * mutation answers with the snail's full list (one write can change two rows:
+ * promoting one demotes another, deleting the main promotes a successor).
+ * Everything that differs between the two lives in a RelationConfig.
+ */
+
+type RelationRowData = { id: number; isPrimary: boolean };
+
+type RelationConfig<TRow extends RelationRowData, TForm extends { isPrimary: boolean }> = {
+  /** URL segment under /api/admin/snails/[id]/ — also reads as the plural noun. */
+  resource: string;
+  /** Lowercase singular noun for error copy. */
+  noun: string;
+  title: string;
+  addLabel: string;
+  mainLabel: string;
+  emptyForm: TForm;
+  toForm: (row: TRow) => TForm;
+  /** Silent guard: saving does nothing until the required field is filled. */
+  isComplete: (f: TForm) => boolean;
+  /** Client-side validation error to surface, or null. */
+  invalidError?: (f: TForm) => string | null;
+  /** Body for the create POST; defaults to the form itself. */
+  addBody?: (f: TForm, rows: TRow[]) => unknown;
+  confirmRemove: (row: TRow) => string;
+  /** The two-line read view of a row (name line + detail line). */
+  summary: (row: TRow) => React.ReactNode;
+  Fields: (props: { f: TForm; setF: (f: TForm) => void; bias: SearchBias | null }) => React.ReactElement;
+};
+
+function RelationRow<TRow extends RelationRowData, TForm extends { isPrimary: boolean }>({
+  row,
+  snailId,
+  cfg,
+  bias,
+  onList,
+}: {
+  row: TRow;
   snailId: number;
-  /** Every mutation answers with the snail's full contact list; the section just takes it. */
-  onList: (list: ContactData[]) => void;
+  cfg: RelationConfig<TRow, TForm>;
+  bias: SearchBias | null;
+  onList: (list: TRow[]) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [f, setF] = useState<ContactFormState>(() => contactForm(contact));
+  const [f, setF] = useState<TForm>(() => cfg.toForm(row));
+  const rowUrl = `/api/admin/snails/${snailId}/${cfg.resource}/${row.id}`;
 
   // Seeding once would leave the editor showing whatever was true when the row
-  // first rendered — including a Main flag another contact has since taken.
+  // first rendered — including a Main flag another row has since taken.
   function startEditing() {
-    setF(contactForm(contact));
+    setF(cfg.toForm(row));
     setError("");
     setEditing(true);
   }
 
   async function save() {
-    if (!f.name.trim()) return;
-    if (f.email.trim() && !isValidEmail(f.email)) {
-      setError(`"${f.email}" is not a valid email address. Use one address per contact.`);
+    if (!cfg.isComplete(f)) return;
+    const invalid = cfg.invalidError?.(f);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
+    const res = await fetch(rowUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(f),
@@ -384,14 +425,14 @@ function ContactRow({ contact, snailId, onList }: {
       setError("");
       return;
     }
-    // e.g. refusing to unset the snail's only main contact.
+    // e.g. refusing to unset the snail's only main row.
     const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to save contact");
+    setError(data.error || `Failed to save ${cfg.noun}`);
   }
 
   async function promote() {
     setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, {
+    const res = await fetch(rowUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPrimary: true }),
@@ -403,25 +444,25 @@ function ContactRow({ contact, snailId, onList }: {
       return;
     }
     const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to set the main contact");
+    setError(data.error || `Failed to set the main ${cfg.noun}`);
   }
 
   async function remove() {
-    if (!confirm(`Remove contact "${contact.name}"?`)) return;
-    const res = await fetch(`/api/admin/snails/${snailId}/contacts/${contact.id}`, { method: "DELETE" });
+    if (!confirm(cfg.confirmRemove(row))) return;
+    const res = await fetch(rowUrl, { method: "DELETE" });
     if (res.ok) {
       onList(await res.json());
       return;
     }
-    // The server refuses to remove a snail's last contact.
+    // The server refuses to remove a snail's last contact/location.
     const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to remove contact");
+    setError(data.error || `Failed to remove ${cfg.noun}`);
   }
 
   if (editing) {
     return (
       <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-        <ContactFields f={f} setF={setF} />
+        <cfg.Fields f={f} setF={setF} bias={bias} />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
       </div>
@@ -431,20 +472,8 @@ function ContactRow({ contact, snailId, onList }: {
   return (
     <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
       <div className="flex items-start gap-1.5">
-        <MainStar on={contact.isPrimary} label="Main contact" onPromote={promote} busy={saving} />
-        <div>
-        <p className="text-sm font-medium text-gray-900">
-          {contact.name}
-          <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
-          {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
-        </p>
-        <p className="text-xs text-gray-600 mt-0.5">
-          {contact.email && <a href={`mailto:${contact.email}`} className="text-amber-700 hover:text-amber-800">{contact.email}</a>}
-          {contact.email && contact.phone && <span className="mx-1.5 text-gray-300">&middot;</span>}
-          {contact.phone && <span>{contact.phone}{contact.phoneVanity ? ` (${contact.phoneVanity})` : ""}</span>}
-          {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
-        </p>
-        </div>
+        <MainStar on={row.isPrimary} label={cfg.mainLabel} onPromote={promote} busy={saving} />
+        <div>{cfg.summary(row)}</div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <div className="flex gap-2">
@@ -457,73 +486,111 @@ function ContactRow({ contact, snailId, onList }: {
   );
 }
 
-function ContactsSection({ snailId, initial }: { snailId: number; initial: ContactData[] }) {
-  const [contacts, setContacts] = useState<ContactData[]>(initial);
+function RelationSection<TRow extends RelationRowData, TForm extends { isPrimary: boolean }>({
+  snailId,
+  initial,
+  cfg,
+  bias,
+}: {
+  snailId: number;
+  initial: TRow[];
+  cfg: RelationConfig<TRow, TForm>;
+  bias: SearchBias | null;
+}) {
+  const [rows, setRows] = useState<TRow[]>(initial);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [f, setF] = useState<ContactFormState>(emptyContactForm);
+  const [f, setF] = useState<TForm>(cfg.emptyForm);
 
   async function add() {
-    if (!f.name.trim()) return;
-    if (f.email.trim() && !isValidEmail(f.email)) {
-      setError(`"${f.email}" is not a valid email address. Use one address per contact.`);
+    if (!cfg.isComplete(f)) return;
+    const invalid = cfg.invalidError?.(f);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/contacts`, {
+    const res = await fetch(`/api/admin/snails/${snailId}/${cfg.resource}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(f),
+      body: JSON.stringify(cfg.addBody ? cfg.addBody(f, rows) : f),
     });
     setSaving(false);
     if (res.ok) {
-      setContacts(await res.json());
-      setF(emptyContactForm);
+      setRows(await res.json());
+      setF(cfg.emptyForm);
       setAdding(false);
       setError("");
       return;
     }
     const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to add contact");
+    setError(data.error || `Failed to add ${cfg.noun}`);
   }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+        <h2 className="text-sm font-semibold text-gray-900">{cfg.title}</h2>
         {!adding && (
           <button type="button" onClick={() => setAdding(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">
-            + Add Contact
+            {cfg.addLabel}
           </button>
         )}
       </div>
 
       {adding && (
         <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-          <ContactFields f={f} setF={setF} />
+          <cfg.Fields f={f} setF={setF} bias={bias} />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyContactForm); setError(""); }} saving={saving} />
+          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(cfg.emptyForm); setError(""); }} saving={saving} />
         </div>
       )}
 
-      {contacts.length === 0 && !adding ? (
-        <p className="text-sm text-gray-400">No contacts yet.</p>
+      {rows.length === 0 && !adding ? (
+        <p className="text-sm text-gray-400">No {cfg.resource} yet.</p>
       ) : (
         <div className="space-y-2">
-          {contacts.map((c) => (
-            <ContactRow
-              key={c.id}
-              contact={c}
-              snailId={snailId}
-              onList={setContacts}
-            />
+          {rows.map((row) => (
+            <RelationRow key={row.id} row={row} snailId={snailId} cfg={cfg} bias={bias} onList={setRows} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
+const contactsConfig: RelationConfig<ContactData, ContactFormState> = {
+  resource: "contacts",
+  noun: "contact",
+  title: "Contacts",
+  addLabel: "+ Add Contact",
+  mainLabel: "Main contact",
+  emptyForm: emptyContactForm,
+  toForm: contactForm,
+  isComplete: (f) => !!f.name.trim(),
+  invalidError: (f) =>
+    f.email.trim() && !isValidEmail(f.email)
+      ? `"${f.email}" is not a valid email address. Use one address per contact.`
+      : null,
+  confirmRemove: (c) => `Remove contact "${c.name}"?`,
+  summary: (contact) => (
+    <>
+      <p className="text-sm font-medium text-gray-900">
+        {contact.name}
+        <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
+        {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
+      </p>
+      <p className="text-xs text-gray-600 mt-0.5">
+        {contact.email && <a href={`mailto:${contact.email}`} className="text-amber-700 hover:text-amber-800">{contact.email}</a>}
+        {contact.email && contact.phone && <span className="mx-1.5 text-gray-300">&middot;</span>}
+        {contact.phone && <span>{contact.phone}{contact.phoneVanity ? ` (${contact.phoneVanity})` : ""}</span>}
+        {!contact.email && !contact.phone && <span className="text-gray-400">No email or phone</span>}
+      </p>
+    </>
+  ),
+  Fields: ContactFields,
+};
 
 /* ── locations section (its own CRUD against /api/admin/snails/[id]/locations) ── */
 
@@ -606,171 +673,34 @@ function LocationFields({ f, setF, bias }: { f: LocationFormState; setF: (f: Loc
   );
 }
 
-function LocationRow({ location, snailId, bias, onList }: {
-  location: LocationData;
-  snailId: number;
-  bias: SearchBias | null;
-  /** Every mutation answers with the snail's full location list; the section just takes it. */
-  onList: (list: LocationData[]) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [f, setF] = useState<LocationFormState>(() => locationForm(location));
-
-  // Seeding once would leave the editor showing whatever was true when the row
-  // first rendered — including a Main flag another location has since taken.
-  function startEditing() {
-    setF(locationForm(location));
-    setError("");
-    setEditing(true);
-  }
-
-  async function save() {
-    if (!f.address.trim()) return;
-    setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(f),
-    });
-    setSaving(false);
-    if (res.ok) {
-      onList(await res.json());
-      setEditing(false);
-      setError("");
-      return;
-    }
-    // e.g. refusing to unset the snail's only main location.
-    const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to save location");
-  }
-
-  async function promote() {
-    setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isPrimary: true }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      onList(await res.json());
-      setError("");
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to set the main location");
-  }
-
-  async function remove() {
-    if (!confirm(`Remove location "${location.address}"?`)) return;
-    const res = await fetch(`/api/admin/snails/${snailId}/locations/${location.id}`, { method: "DELETE" });
-    if (res.ok) {
-      onList(await res.json());
-      return;
-    }
-    // The server refuses to remove a snail's last location.
-    const data = await res.json().catch(() => ({}));
-    setError(data.error || "Failed to remove location");
-  }
-
-  if (editing) {
-    return (
-      <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-        <LocationFields f={f} setF={setF} bias={bias} />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <SaveCancel onSave={save} onCancel={() => setEditing(false)} saving={saving} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="border border-gray-100 rounded-lg p-3 flex items-start justify-between gap-3">
-      <div className="flex items-start gap-1.5">
-        <MainStar on={location.isPrimary} label="Main location" onPromote={promote} busy={saving} />
-        <div>
-        <p className="text-sm font-medium text-gray-900">
-          {location.label || location.address}
-          <span className="ml-2 text-xs font-normal text-gray-500">{locationKindLabel(location.kind)}</span>
-          {location.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
-        </p>
-        <p className="text-xs text-gray-600 mt-0.5">
-          {location.label && <span>{location.address}<span className="mx-1.5 text-gray-300">&middot;</span></span>}
-          {[location.city, location.borough, location.state, location.zip].filter(Boolean).join(", ") || <span className="text-gray-400">No city or ZIP</span>}
-          {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
-        </p>
-        </div>
-      </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        <div className="flex gap-2">
-          <button type="button" onClick={startEditing} className="text-amber-700 hover:text-amber-800 text-sm font-medium">Edit</button>
-          <button type="button" onClick={remove} className="text-red-600 hover:text-red-700 text-sm font-medium">Delete</button>
-        </div>
-        {error && <p className="text-xs text-red-600 text-right max-w-56">{error}</p>}
-      </div>
-    </div>
-  );
-}
-
-function LocationsSection({ snailId, initial, bias }: { snailId: number; initial: LocationData[]; bias: SearchBias | null }) {
-  const [locations, setLocations] = useState<LocationData[]>(initial);
-  const [adding, setAdding] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [f, setF] = useState<LocationFormState>(emptyLocationForm);
-
-  async function add() {
-    if (!f.address.trim()) return;
-    setSaving(true);
-    const res = await fetch(`/api/admin/snails/${snailId}/locations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, isPrimary: f.isPrimary || locations.length === 0 }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setLocations(await res.json());
-      setF(emptyLocationForm);
-      setAdding(false);
-    }
-  }
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">Locations</h2>
-        {!adding && (
-          <button type="button" onClick={() => setAdding(true)} className="text-amber-700 hover:text-amber-800 text-sm font-medium">
-            + Add Location
-          </button>
-        )}
-      </div>
-
-      {adding && (
-        <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-          <LocationFields f={f} setF={setF} bias={bias} />
-          <SaveCancel onSave={add} onCancel={() => { setAdding(false); setF(emptyLocationForm); }} saving={saving} />
-        </div>
-      )}
-
-      {locations.length === 0 && !adding ? (
-        <p className="text-sm text-gray-400">No locations yet.</p>
-      ) : (
-        <div className="space-y-2">
-          {locations.map((l) => (
-            <LocationRow
-              key={l.id}
-              location={l}
-              snailId={snailId}
-              bias={bias}
-              onList={setLocations}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const locationsConfig: RelationConfig<LocationData, LocationFormState> = {
+  resource: "locations",
+  noun: "location",
+  title: "Locations",
+  addLabel: "+ Add Location",
+  mainLabel: "Main location",
+  emptyForm: emptyLocationForm,
+  toForm: locationForm,
+  isComplete: (f) => !!f.address.trim(),
+  // A snail's first location is its main one even if the box wasn't ticked.
+  addBody: (f, rows) => ({ ...f, isPrimary: f.isPrimary || rows.length === 0 }),
+  confirmRemove: (l) => `Remove location "${l.address}"?`,
+  summary: (location) => (
+    <>
+      <p className="text-sm font-medium text-gray-900">
+        {location.label || location.address}
+        <span className="ml-2 text-xs font-normal text-gray-500">{locationKindLabel(location.kind)}</span>
+        {location.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
+      </p>
+      <p className="text-xs text-gray-600 mt-0.5">
+        {location.label && <span>{location.address}<span className="mx-1.5 text-gray-300">&middot;</span></span>}
+        {[location.city, location.borough, location.state, location.zip].filter(Boolean).join(", ") || <span className="text-gray-400">No city or ZIP</span>}
+        {location.latitude == null && <span className="ml-1.5 text-amber-700">Not geocoded</span>}
+      </p>
+    </>
+  ),
+  Fields: LocationFields,
+};
 
 function MapEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
@@ -991,10 +921,10 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </DetailSection>
 
       {/* Contacts */}
-      <ContactsSection snailId={snail.id} initial={snail.contacts} />
+      <RelationSection snailId={snail.id} initial={snail.contacts} cfg={contactsConfig} bias={null} />
 
       {/* Locations */}
-      <LocationsSection snailId={snail.id} initial={snail.locations} bias={searchBias} />
+      <RelationSection snailId={snail.id} initial={snail.locations} cfg={locationsConfig} bias={searchBias} />
 
       {/* Map & Visibility */}
       <DetailSection title="Map & Visibility" snailId={snail.id} EditForm={(props) => <MapEditForm {...props} snail={snail} />}>
