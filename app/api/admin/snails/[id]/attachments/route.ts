@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { requireWriteUser } from "@/lib/rbac";
 import { put } from "@vercel/blob";
 import { attachmentConfig } from "@/lib/attachment-config";
 
@@ -27,10 +27,8 @@ export async function GET(request: NextRequest, { params }: Ctx) {
 
 export async function POST(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const token = await getToken({ req: request });
-  if (!token?.sub) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWriteUser(request);
+  if (auth instanceof NextResponse) return auth;
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       fileSize: file.size,
       category,
       snailId: parseInt(id),
-      uploadedById: parseInt(token.sub),
+      uploadedById: auth.userId,
     },
     include: { uploadedBy: { select: { name: true } } },
   });

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import { requireWrite } from "@/lib/rbac";
+import { requireWriteUser } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,8 +11,8 @@ type Ctx = { params: Promise<{ id: string }> };
  *  - reopen   → returns a Deferred snail to the lead funnel to reapply
  */
 export async function POST(request: NextRequest, { params }: Ctx) {
-  const forbidden = await requireWrite(request);
-  if (forbidden) return forbidden;
+  const auth = await requireWriteUser(request);
+  if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
   const snailId = parseInt(id);
@@ -59,9 +58,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         { status: 400 }
       );
     }
-    const token = await getToken({ req: request });
-    const authorId = token?.sub ? parseInt(token.sub) : null;
-
     const updated = await prisma.snail.update({
       where: { id: snailId },
       data: {
@@ -70,16 +66,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         boardDecisionDate: now,
         lastTouchDate: now,
         ...(body.recommendation ? { recommendation: body.recommendation } : {}),
-        ...(authorId
-          ? {
-              notes: {
-                create: {
-                  content: `Board deferred the application: ${reason}`,
-                  authorId,
-                },
-              },
-            }
-          : {}),
+        notes: {
+          create: {
+            content: `Board deferred the application: ${reason}`,
+            authorId: auth.userId,
+          },
+        },
       },
     });
     return NextResponse.json(updated);

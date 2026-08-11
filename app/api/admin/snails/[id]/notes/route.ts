@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { requireWriteUser } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -16,10 +16,8 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 
 export async function POST(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const token = await getToken({ req: request });
-  if (!token?.sub) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWriteUser(request);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await request.json();
   if (!body.content?.trim()) {
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     data: {
       content: body.content.trim(),
       snailId: parseInt(id),
-      authorId: parseInt(token.sub),
+      authorId: auth.userId,
     },
     include: { author: { select: { name: true } } },
   });

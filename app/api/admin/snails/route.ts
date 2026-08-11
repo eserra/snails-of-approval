@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/slug";
 import { geocodeAddress } from "@/lib/geocode";
-import { requireWrite } from "@/lib/rbac";
+import { requireWriteUser } from "@/lib/rbac";
 import { isValidEmail } from "@/lib/email";
 import {
   isValidInstagramHandle,
@@ -48,9 +48,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const forbidden = await requireWrite(request);
-  if (forbidden) return forbidden;
-  const token = await getToken({ req: request });
+  const auth = await requireWriteUser(request);
+  if (auth instanceof NextResponse) return auth;
   const body = await request.json();
 
   // A snail must have someone to talk to and somewhere to point at. Checked before
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
       status: body.status || "draft",
       categoryId: body.categoryId ? parseInt(body.categoryId) : null,
       chapterId: parseInt(body.chapterId),
-      createdById: token?.sub ? parseInt(token.sub) : null,
+      createdById: auth.userId,
       // CRM fields
       track: body.track || "lead",
       stage: body.stage || null,

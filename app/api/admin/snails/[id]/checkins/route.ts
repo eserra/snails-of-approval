@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { requireWriteUser } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -16,10 +16,8 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 
 export async function POST(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const token = await getToken({ req: request });
-  if (!token?.sub) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWriteUser(request);
+  if (auth instanceof NextResponse) return auth;
 
   const body = await request.json();
 
@@ -59,7 +57,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const checkIn = await prisma.checkIn.create({
     data: {
       snailId: parseInt(id),
-      authorId: parseInt(token.sub),
+      authorId: auth.userId,
       visitedAt,
       partySize,
       occasion: body.occasion?.trim() || null,

@@ -28,3 +28,21 @@ export async function requireAdmin(
 ): Promise<NextResponse | null> {
   return requireRole(request, ["admin"]);
 }
+
+/**
+ * Gate on write access and yield the acting user's id, for routes that
+ * attribute the write (notes, check-ins, uploads). Callers branch on
+ * `instanceof NextResponse` for the failure case.
+ */
+export async function requireWriteUser(
+  request: NextRequest
+): Promise<{ userId: number } | NextResponse> {
+  const token = await getToken({ req: request });
+  if (!token?.role || !WRITE_ROLES.includes(token.role as Role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!token.sub) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return { userId: parseInt(token.sub) };
+}
