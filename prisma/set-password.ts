@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../lib/users.js";
 
 // Reset a single user's password directly in the database — for admin recovery
 // (e.g. a locked-out admin). For normal changes, signed-in users have the
@@ -37,7 +37,7 @@ async function main() {
     process.exit(1);
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
   await prisma.user.update({ where: { email }, data: { passwordHash } });
   console.log(
     `Updated password for ${user.name} <${email}> (role: ${user.role}).`

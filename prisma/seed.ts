@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../lib/users.js";
 import { seedCategories } from "./sfusa-taxonomy.js";
 
 const adapter = new PrismaPg({
@@ -31,7 +31,7 @@ async function main() {
   console.log(`Seeded ${chapters.length} chapters`);
 
   // Admin user
-  const defaultPassword = await bcrypt.hash("admin123", 12);
+  const defaultPassword = await hashPassword("admin123");
   await prisma.user.upsert({
     where: { email: "admin@snailsofapproval.org" },
     update: {},
@@ -45,7 +45,7 @@ async function main() {
   console.log("Seeded admin user (admin@snailsofapproval.org / admin123)");
 
   // Volunteer users from the spreadsheet
-  const volunteerPassword = await bcrypt.hash("changeme123", 12);
+  const volunteerPassword = await hashPassword("changeme123");
   const volunteers = [
     { email: "barbara@snailsofapproval.org", name: "Barbara" },
     { email: "kyle.karnuta@snailsofapproval.org", name: "Kyle Karnuta" },

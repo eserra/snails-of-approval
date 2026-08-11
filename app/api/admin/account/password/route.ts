@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/users";
 
 // Lets the signed-in user change their own password (any role).
 export async function POST(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const passwordHash = await hashPassword(newPassword);
   await prisma.user.update({
     where: { id: user.id },
     data: { passwordHash },

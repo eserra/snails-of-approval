@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/rbac";
-import bcrypt from "bcryptjs";
+import { hashPassword, publicUserSelect } from "@/lib/users";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -50,19 +50,13 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   };
 
   if (body.password) {
-    data.passwordHash = await bcrypt.hash(body.password, 12);
+    data.passwordHash = await hashPassword(body.password);
   }
 
   const user = await prisma.user.update({
     where: { id: targetId },
     data,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
-    },
+    select: publicUserSelect,
   });
 
   return NextResponse.json(user);

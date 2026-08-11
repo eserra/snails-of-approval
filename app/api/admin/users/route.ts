@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/rbac";
-import bcrypt from "bcryptjs";
+import { hashPassword, publicUserSelect } from "@/lib/users";
 
 export async function GET(request: NextRequest) {
   const forbidden = await requireAdmin(request);
@@ -9,13 +9,7 @@ export async function GET(request: NextRequest) {
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
-    },
+    select: publicUserSelect,
   });
 
   return NextResponse.json(users);
@@ -37,7 +31,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const passwordHash = await bcrypt.hash(body.password, 12);
+  const passwordHash = await hashPassword(body.password);
 
   const user = await prisma.user.create({
     data: {
@@ -46,13 +40,7 @@ export async function POST(request: NextRequest) {
       name: body.name,
       role: body.role || "editor",
     },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      createdAt: true,
-    },
+    select: publicUserSelect,
   });
 
   return NextResponse.json(user, { status: 201 });
