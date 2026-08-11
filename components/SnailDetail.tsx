@@ -190,7 +190,6 @@ function InfoEditForm({ onSave, onCancel, saving, snail, chapters, categories }:
     name: snail.name,
     chapterId: String(snail.chapterId as number),
     categoryId: snail.categoryId ? String(snail.categoryId) : "",
-    establishmentType: (snail.establishmentType as string) || "",
     diversityTags: (snail.diversityTags as string) || "",
     description: (snail.description as string) || "",
   });
