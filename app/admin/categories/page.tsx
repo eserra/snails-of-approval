@@ -37,6 +37,10 @@ export default function AdminCategoriesPage() {
 
   // Top-level categories (no parent)
   const topLevel = categories.filter((c) => !c.parentId);
+  // Orphans — categories with a parentId that points to a non-top-level parent
+  const orphans = categories.filter(
+    (c) => c.parentId && !topLevel.some((t) => t.id === c.parentId)
+  );
 
   // Get children for a parent
   function childrenOf(id: number) {
@@ -266,11 +270,7 @@ export default function AdminCategoriesPage() {
             );
           })}
 
-          {/* Orphans — categories with a parentId that points to a non-top-level parent */}
-          {categories.filter(
-            (c) =>
-              c.parentId && !topLevel.some((t) => t.id === c.parentId)
-          ).length > 0 && (
+          {orphans.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
                 <span className="font-semibold text-gray-500">
@@ -279,31 +279,25 @@ export default function AdminCategoriesPage() {
               </div>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-gray-100">
-                  {categories
-                    .filter(
-                      (c) =>
-                        c.parentId &&
-                        !topLevel.some((t) => t.id === c.parentId)
-                    )
-                    .map((cat) => (
-                      <tr
-                        key={cat.id}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="px-5 py-3 text-gray-700">{cat.name}</td>
-                        <td className="px-5 py-3 text-gray-500">
-                          {cat._count.snails} snails
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <button
-                            onClick={() => startEdit(cat)}
-                            className="text-amber-700 hover:text-amber-800 text-sm font-medium"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                  {orphans.map((cat) => (
+                    <tr
+                      key={cat.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-5 py-3 text-gray-700">{cat.name}</td>
+                      <td className="px-5 py-3 text-gray-500">
+                        {cat._count.snails} snails
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => startEdit(cat)}
+                          className="text-amber-700 hover:text-amber-800 text-sm font-medium"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
