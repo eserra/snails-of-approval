@@ -81,18 +81,26 @@ function parseMessage(msg: gmail_v1.Schema$Message): GmailMessage {
   };
 }
 
+// Header values must stay on a single line: strip CR/LF so an untrusted
+// to/subject/inReplyTo can't inject extra headers (e.g. a hidden Bcc).
+function sanitizeHeader(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
 function buildRawEmail(params: SendEmailParams, fromAddress: string): string {
   const boundary = `boundary_${Date.now()}`;
+  const subject = params.threadId ? `Re: ${params.subject}` : params.subject;
   const headers = [
-    `From: ${fromAddress}`,
-    `To: ${params.to}`,
-    `Subject: ${params.threadId ? `Re: ${params.subject}` : params.subject}`,
+    `From: ${sanitizeHeader(fromAddress)}`,
+    `To: ${sanitizeHeader(params.to)}`,
+    `Subject: ${sanitizeHeader(subject)}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ];
   if (params.inReplyTo) {
-    headers.push(`In-Reply-To: ${params.inReplyTo}`);
-    headers.push(`References: ${params.inReplyTo}`);
+    const inReplyTo = sanitizeHeader(params.inReplyTo);
+    headers.push(`In-Reply-To: ${inReplyTo}`);
+    headers.push(`References: ${inReplyTo}`);
   }
 
   const body = [
