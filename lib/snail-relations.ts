@@ -20,3 +20,12 @@ export function listContacts(snailId: number) {
 export function listLocations(snailId: number) {
   return prisma.location.findMany({ where: { snailId }, orderBy: CHRONO_ORDER });
 }
+
+/**
+ * The contact/location that represents the snail: the one flagged primary,
+ * falling back to the first row (oldest, when the rows were loaded with
+ * CHRONO_ORDER).
+ */
+export function primary<T extends { isPrimary: boolean }>(rows: T[]): T | undefined {
+  return rows.find((r) => r.isPrimary) ?? rows[0];
+}

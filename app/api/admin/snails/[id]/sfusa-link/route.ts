@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildSfusaPrefillUrl } from "@/lib/sfusa-form";
 import { parseDiversityTags } from "@/lib/diversity-tags";
+import { primary } from "@/lib/snail-relations";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,13 +25,12 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 
   // Business phone/email come from the main contact, falling back to the first
   // contact that has each.
-  const primary = snail.contacts.find((c) => c.isPrimary) ?? snail.contacts[0];
-  const phone = primary?.phone || snail.contacts.find((c) => c.phone)?.phone || null;
-  const email = primary?.email || snail.contacts.find((c) => c.email)?.email || null;
+  const mainContact = primary(snail.contacts);
+  const phone = mainContact?.phone || snail.contacts.find((c) => c.phone)?.phone || null;
+  const email = mainContact?.email || snail.contacts.find((c) => c.email)?.email || null;
 
   // The map takes a single address: the main location, falling back to the first.
-  const location =
-    snail.locations.find((l) => l.isPrimary) ?? snail.locations[0] ?? null;
+  const location = primary(snail.locations) ?? null;
 
   // The form's "Type of Business" is the top-level category (our category may be a
   // subtype, so use its parent's name when present).
@@ -48,7 +48,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     instagram: snail.instagramHandle,
     otherSocial: snail.otherSocial,
     phone,
-    phoneVanity: primary?.phoneVanity ?? null,
+    phoneVanity: mainContact?.phoneVanity ?? null,
     email,
     streetAddress: location?.address ?? null,
     city: location?.city ?? null,

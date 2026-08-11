@@ -7,7 +7,7 @@ import { stageLabel } from "@/lib/pipeline-stages";
 import { businessStatusLabel } from "@/lib/business-status";
 import { contactRoleLabel } from "@/lib/contact-roles";
 import { getDiversityLabel, parseDiversityTags } from "@/lib/diversity-tags";
-import { CHRONO_ORDER } from "@/lib/snail-relations";
+import { CHRONO_ORDER, primary } from "@/lib/snail-relations";
 
 // Everything the export needs, in one Prisma include so the query and the row
 // builder can never drift apart.
@@ -24,13 +24,6 @@ export type ExportSnail = Prisma.SnailGetPayload<{
 }>;
 
 type Cell = string | number;
-
-// A snail can hold several contacts/locations; exactly one is flagged primary
-// (falling back to the oldest, which the include's ordering puts first). The
-// spreadsheet is one row per snail, so we surface that primary one.
-function primary<T extends { isPrimary: boolean }>(rows: T[]): T | undefined {
-  return rows.find((r) => r.isPrimary) ?? rows[0];
-}
 
 const yesNo = (v: boolean): string => (v ? "Yes" : "No");
 
