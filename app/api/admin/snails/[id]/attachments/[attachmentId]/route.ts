@@ -9,9 +9,11 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   const forbidden = await requireWrite(request);
   if (forbidden) return forbidden;
 
-  const { attachmentId } = await params;
-  const attachment = await prisma.attachment.findUnique({
-    where: { id: parseInt(attachmentId) },
+  const { id, attachmentId } = await params;
+  // Scope the lookup to the snail in the path so a stray id can't delete
+  // another snail's file.
+  const attachment = await prisma.attachment.findFirst({
+    where: { id: parseInt(attachmentId), snailId: parseInt(id) },
   });
 
   if (!attachment) {

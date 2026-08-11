@@ -12,7 +12,37 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   }
 
   const { id } = await params;
+  const targetId = parseInt(id);
   const body = await request.json();
+
+  const current = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!current) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Never let the last admin be demoted — whether editing yourself or the only
+  // other admin — or the admin panel becomes unreachable by everyone.
+  if (current.role === "admin" && body.role && body.role !== "admin") {
+    const adminCount = await prisma.user.count({ where: { role: "admin" } });
+    if (adminCount <= 1) {
+      return NextResponse.json(
+        { error: "Cannot remove the last admin. Promote another admin first." },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Keep email unique, returning the same 409 as the create path instead of an
+  // opaque 500 from the unique constraint.
+  if (body.email && body.email !== current.email) {
+    const existing = await prisma.user.findUnique({ where: { email: body.email } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "A user with this email already exists" },
+        { status: 409 }
+      );
+    }
+  }
 
   const data: { name: string; email: string; role: string; passwordHash?: string } = {
     name: body.name,
@@ -25,7 +55,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   }
 
   const user = await prisma.user.update({
-    where: { id: parseInt(id) },
+    where: { id: targetId },
     data,
     select: {
       id: true,
