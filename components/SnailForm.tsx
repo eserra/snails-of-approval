@@ -3,10 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
-import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
 import { stageLabel } from "@/lib/pipeline-stages";
-import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
 import { businessStatuses } from "@/lib/business-status";
@@ -17,7 +15,6 @@ import {
 } from "@/lib/instagram";
 import { locationKinds, boroughs } from "@/lib/location-kinds";
 import type { ResolvedAddress } from "@/lib/address";
-import PipelineProgress from "./PipelineProgress";
 
 type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
 type Category = {
@@ -27,22 +24,6 @@ type Category = {
   children?: { id: number; name: string }[];
 };
 type UserOption = { id: number; name: string };
-type NoteData = {
-  id: number;
-  content: string;
-  createdAt: string;
-  author: { name: string };
-};
-type AttachmentData = {
-  id: number;
-  fileName: string;
-  fileUrl: string;
-  fileType: string;
-  fileSize: number;
-  category: string;
-  createdAt: string;
-  uploadedBy: { name: string };
-};
 
 type ContactInput = {
   name: string;
@@ -69,7 +50,6 @@ type LocationInput = {
 };
 
 type SnailData = {
-  id?: number;
   name: string;
   yearAwarded: number | string;
   description: string;
@@ -97,9 +77,6 @@ type SnailData = {
   welcomeLetterSent: boolean;
   stickersDelivered: boolean;
   diversityTags: string;
-  // Notes and attachments (read-only, for display)
-  notes?: NoteData[];
-  attachments?: AttachmentData[];
 };
 
 const emptySnail: SnailData = {
@@ -144,36 +121,26 @@ const checkboxClass =
   "h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500";
 
 export default function SnailForm({
-  snail,
   userRole,
   userId,
 }: {
-  snail?: SnailData;
   userRole?: string;
   userId?: string;
 }) {
   const router = useRouter();
   const isAdmin = userRole === "admin";
-  const defaults = snail || {
+  const [form, setForm] = useState<SnailData>({
     ...emptySnail,
     assigneeId: userId || "",
-  };
-  const [form, setForm] = useState<SnailData>(defaults);
+  });
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notes, setNotes] = useState<NoteData[]>(snail?.notes || []);
-  const [attachments, setAttachments] = useState<AttachmentData[]>(
-    snail?.attachments || []
-  );
   const [stageWarnings, setStageWarnings] = useState<
     { label: string; met: boolean }[]
   >([]);
-  const [newNote, setNewNote] = useState("");
-  const [addingNote, setAddingNote] = useState(false);
-  const isEdit = !!snail?.id;
 
   useEffect(() => {
     Promise.all([
@@ -341,13 +308,8 @@ export default function SnailForm({
     setSaving(true);
     setError("");
 
-    const url = isEdit
-      ? `/api/admin/snails/${snail!.id}`
-      : "/api/admin/snails";
-    const method = isEdit ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
+    const res = await fetch("/api/admin/snails", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
@@ -366,33 +328,8 @@ export default function SnailForm({
     router.refresh();
   }
 
-  async function handleAddNote() {
-    if (!newNote.trim() || !snail?.id) return;
-    setAddingNote(true);
-    const res = await fetch(`/api/admin/snails/${snail.id}/notes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newNote }),
-    });
-    if (res.ok) {
-      const note = await res.json();
-      setNotes((prev) => [note, ...prev]);
-      setNewNote("");
-    }
-    setAddingNote(false);
-  }
-
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
-      {/* Pipeline Progress (only on edit) */}
-      {isEdit && (
-        <PipelineProgress
-          track={form.track}
-          currentStage={form.stage}
-          attachments={attachments.map((a) => ({ category: a.category }))}
-        />
-      )}
-
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
           {error}
@@ -874,10 +811,8 @@ export default function SnailForm({
               onChange={(e) => {
                 const newStage = e.target.value;
                 update("stage", newStage);
-                const warnings = validateStageChange(newStage, {
-                  attachments: attachments.map((a) => ({ category: a.category })),
-                });
-                setStageWarnings(warnings);
+                // A brand-new snail never has attachments yet.
+                setStageWarnings(validateStageChange(newStage, { attachments: [] }));
               }}
               className={`${inputClass} bg-white`}
             >
@@ -995,36 +930,6 @@ export default function SnailForm({
               className={inputClass}
             />
           </div>
-
-          {isEdit && (
-            <>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={form.welcomeLetterSent}
-                  onChange={(e) => update("welcomeLetterSent", e.target.checked)}
-                  className={checkboxClass}
-                  id="welcomeLetterSent"
-                />
-                <label htmlFor="welcomeLetterSent" className="text-sm text-gray-700">
-                  Welcome Letter Sent
-                </label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={form.stickersDelivered}
-                  onChange={(e) => update("stickersDelivered", e.target.checked)}
-                  className={checkboxClass}
-                  id="stickersDelivered"
-                />
-                <label htmlFor="stickersDelivered" className="text-sm text-gray-700">
-                  SOA Stickers Delivered
-                </label>
-              </div>
-            </>
-          )}
         </div>
       </div>
 
@@ -1050,78 +955,13 @@ export default function SnailForm({
         </div>
       )}
 
-      {/* Attachments (only show on edit) */}
-      {isEdit && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-gray-900">Attachments</h2>
-          {Object.entries(attachmentConfig).map(([category, config]) => (
-            <FileUpload
-              key={category}
-              snailId={snail!.id!}
-              category={category}
-              label={config.label}
-              maxCount={config.maxCount}
-              attachments={attachments.filter((a) => a.category === category)}
-              onUpload={(a) => setAttachments((prev) => [a, ...prev])}
-              onDelete={(id) =>
-                setAttachments((prev) => prev.filter((a) => a.id !== id))
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Notes (only show on edit) */}
-      {isEdit && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-gray-900">Notes</h2>
-
-          <div className="flex gap-2">
-            <textarea
-              rows={2}
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Add a note..."
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              type="button"
-              onClick={handleAddNote}
-              disabled={addingNote || !newNote.trim()}
-              className="self-end bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
-            >
-              {addingNote ? "Adding..." : "Add"}
-            </button>
-          </div>
-
-          {notes.length > 0 && (
-            <div className="space-y-3 mt-4">
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="border border-gray-100 rounded-lg p-3"
-                >
-                  <p className="text-sm text-gray-900 whitespace-pre-line">
-                    {note.content}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {note.author.name} &middot;{" "}
-                    {new Date(note.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex gap-3">
         <button
           type="submit"
           disabled={saving}
           className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-amber-800 transition-colors disabled:opacity-50 shadow-sm"
         >
-          {saving ? "Saving..." : isEdit ? "Update Snail" : "Create Snail"}
+          {saving ? "Saving..." : "Create Snail"}
         </button>
         <button
           type="button"
