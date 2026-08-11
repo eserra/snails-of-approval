@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { inputClass, labelClass, checkboxClass } from "@/lib/form-styles";
 import PipelineProgress from "./PipelineProgress";
 import DetailSection, { type EditFormProps } from "./DetailSection";
@@ -9,6 +9,7 @@ import AddressAutocomplete, { type SearchBias } from "./AddressAutocomplete";
 import EmailList from "./gmail/EmailList";
 import ComposeEmail from "./gmail/ComposeEmail";
 import type { CheckIn } from "./CheckInModal";
+import { useSnailFormData, type Chapter, type Category, type UserOption } from "./useSnailFormData";
 import { attachmentConfig } from "@/lib/attachment-config";
 import {
   diversityTags as diversityTagConfig,
@@ -81,9 +82,6 @@ type SnailData = Record<string, unknown> & {
   }[];
 };
 
-type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
-type Category = { id: number; name: string; parentId: number | null };
-type UserOption = { id: number; name: string };
 
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -810,9 +808,7 @@ function CheckInsSection({ checkIns }: { checkIns: CheckIn[] }) {
 /* ── main detail component ── */
 
 export default function SnailDetail({ snail }: { snail: SnailData }) {
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [users, setUsers] = useState<UserOption[]>([]);
+  const { chapters, categories, users } = useSnailFormData();
   const [notes, setNotes] = useState(snail.notes);
   const [attachments, setAttachments] = useState(snail.attachments);
   const [newNote, setNewNote] = useState("");
@@ -833,18 +829,6 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
     snail.stage,
     snail.recommendation as string | null
   );
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/chapters"),
-      fetch("/api/admin/categories"),
-      fetch("/api/admin/users/list"),
-    ]).then(async ([chRes, catRes, uRes]) => {
-      setChapters(await chRes.json());
-      setCategories(await catRes.json());
-      if (uRes.ok) setUsers(await uRes.json());
-    });
-  }, []);
 
   async function handleAddNote() {
     if (!newNote.trim()) return;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { inputClass, labelClass, checkboxClass } from "@/lib/form-styles";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { validateStageChange } from "@/lib/stage-requirements";
@@ -16,15 +16,7 @@ import {
 } from "@/lib/instagram";
 import { locationKinds, boroughs } from "@/lib/location-kinds";
 import type { ResolvedAddress } from "@/lib/address";
-
-type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
-type Category = {
-  id: number;
-  name: string;
-  parentId: number | null;
-  children?: { id: number; name: string }[];
-};
-type UserOption = { id: number; name: string };
+import { useSnailFormData } from "./useSnailFormData";
 
 type ContactInput = {
   name: string;
@@ -128,26 +120,12 @@ export default function SnailForm({
     ...emptySnail,
     assigneeId: userId || "",
   });
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [users, setUsers] = useState<UserOption[]>([]);
+  const { chapters, categories, users } = useSnailFormData();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [stageWarnings, setStageWarnings] = useState<
     { label: string; met: boolean }[]
   >([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/chapters"),
-      fetch("/api/admin/categories"),
-      fetch("/api/admin/users/list"),
-    ]).then(async ([chRes, catRes, usersRes]) => {
-      setChapters(await chRes.json());
-      setCategories(await catRes.json());
-      if (usersRes.ok) setUsers(await usersRes.json());
-    });
-  }, []);
 
   // Search around the selected chapter, so a half-typed street resolves locally.
   const searchBias =
