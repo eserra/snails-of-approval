@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { requireRole } from "@/lib/rbac";
-import { getOAuth2Client } from "@/lib/gmail";
+import { getOAuth2Client, parseGmailLookup } from "@/lib/gmail";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
   const chapterId = searchParams.get("chapterId");
   const userId = searchParams.get("userId");
 
-  if (!chapterId && !userId) {
+  // The ids ride through the OAuth state as raw strings; the shared parser is
+  // used here only to enforce the chapterId-or-userId contract.
+  if (!parseGmailLookup({ chapterId, userId })) {
     return NextResponse.json(
       { error: "chapterId or userId is required" },
       { status: 400 }

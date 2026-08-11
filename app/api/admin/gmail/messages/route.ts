@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { parseGmailLookup } from "@/lib/gmail";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const chapterId = searchParams.get("chapterId");
-  const userId = searchParams.get("userId");
   const snailId = searchParams.get("snailId");
   const page = parseInt(searchParams.get("page") || "1");
   const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20"), 50);
 
-  if (!chapterId && !userId) {
+  const lookup = parseGmailLookup({
+    chapterId: searchParams.get("chapterId"),
+    userId: searchParams.get("userId"),
+  });
+  if (!lookup) {
     return NextResponse.json(
       { error: "chapterId or userId is required" },
       { status: 400 }
     );
   }
 
-  const accountWhere = chapterId
-    ? { chapterId: parseInt(chapterId) }
-    : { userId: parseInt(userId!) };
-
-  const account = await prisma.gmailAccount.findFirst({ where: accountWhere });
+  const account = await prisma.gmailAccount.findFirst({ where: lookup });
   if (!account) {
     return NextResponse.json({ messages: [], total: 0, connected: false });
   }

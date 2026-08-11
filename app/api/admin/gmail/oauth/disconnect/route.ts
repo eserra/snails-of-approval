@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { parseGmailLookup } from "@/lib/gmail";
 
 export async function POST(request: NextRequest) {
   const forbidden = await requireRole(request, ["admin"]);
   if (forbidden) return forbidden;
 
   const body = await request.json();
-  const { chapterId, userId } = body;
 
-  if (!chapterId && !userId) {
+  const lookup = parseGmailLookup(body);
+  if (!lookup) {
     return NextResponse.json(
       { error: "chapterId or userId is required" },
       { status: 400 }
     );
   }
 
-  const where = chapterId
-    ? { chapterId: parseInt(chapterId) }
-    : { userId: parseInt(userId) };
-
-  const account = await prisma.gmailAccount.findFirst({ where });
+  const account = await prisma.gmailAccount.findFirst({ where: lookup });
   if (!account) {
     return NextResponse.json(
       { error: "Gmail account not found" },

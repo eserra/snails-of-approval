@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGmailProvider } from "@/lib/gmail";
+import { getGmailProvider, parseGmailLookup } from "@/lib/gmail";
 
 export async function GET(
   request: NextRequest,
@@ -7,19 +7,17 @@ export async function GET(
 ) {
   const { threadId } = await params;
   const { searchParams } = new URL(request.url);
-  const chapterId = searchParams.get("chapterId");
-  const userId = searchParams.get("userId");
 
-  if (!chapterId && !userId) {
+  const lookup = parseGmailLookup({
+    chapterId: searchParams.get("chapterId"),
+    userId: searchParams.get("userId"),
+  });
+  if (!lookup) {
     return NextResponse.json(
       { error: "chapterId or userId is required" },
       { status: 400 }
     );
   }
-
-  const lookup = chapterId
-    ? { chapterId: parseInt(chapterId) }
-    : { userId: parseInt(userId!) };
 
   const provider = await getGmailProvider(lookup);
   if (!provider) {

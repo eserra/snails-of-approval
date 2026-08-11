@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireWrite } from "@/lib/rbac";
+import { parseGmailLookup } from "@/lib/gmail";
 import { syncEmails } from "@/lib/gmail/sync";
 
 export async function POST(request: NextRequest) {
@@ -7,20 +8,16 @@ export async function POST(request: NextRequest) {
   if (forbidden) return forbidden;
 
   const body = await request.json();
-  const { chapterId, userId, fullSync } = body;
 
-  if (!chapterId && !userId) {
+  const lookup = parseGmailLookup(body);
+  if (!lookup) {
     return NextResponse.json(
       { error: "chapterId or userId is required" },
       { status: 400 }
     );
   }
 
-  const lookup = chapterId
-    ? { chapterId: parseInt(chapterId) }
-    : { userId: parseInt(userId) };
-
-  const result = await syncEmails(lookup, { fullSync });
+  const result = await syncEmails(lookup, { fullSync: body.fullSync });
 
   return NextResponse.json(result);
 }
