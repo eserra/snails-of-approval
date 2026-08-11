@@ -81,35 +81,23 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("track", body.track || "lead");
   set("stage", body.stage || null);
 
-  if ("yearAwarded" in body)
-    data.yearAwarded = body.yearAwarded ? parseInt(body.yearAwarded) : null;
-  if ("categoryId" in body)
-    data.categoryId = body.categoryId ? parseInt(body.categoryId) : null;
-  if ("chapterId" in body) data.chapterId = parseInt(body.chapterId);
-  if ("assigneeId" in body)
-    data.assigneeId = body.assigneeId ? parseInt(body.assigneeId) : null;
-  if ("formerAwardee" in body) data.formerAwardee = body.formerAwardee || false;
-  if ("onSfusaMap" in body) data.onSfusaMap = body.onSfusaMap || false;
-  if ("welcomeLetterSent" in body)
-    data.welcomeLetterSent = body.welcomeLetterSent || false;
-  if ("stickersDelivered" in body)
-    data.stickersDelivered = body.stickersDelivered || false;
-  if ("digitalAssetsSent" in body)
-    data.digitalAssetsSent = body.digitalAssetsSent || false;
-  if ("certificateSent" in body)
-    data.certificateSent = body.certificateSent || false;
-  if ("pressReleaseSent" in body)
-    data.pressReleaseSent = body.pressReleaseSent || false;
-  if ("socialAnnounced" in body)
-    data.socialAnnounced = body.socialAnnounced || false;
-  if ("certificateRequestedDate" in body)
-    data.certificateRequestedDate = body.certificateRequestedDate
-      ? new Date(body.certificateRequestedDate)
-      : null;
-  if ("lastTouchDate" in body)
-    data.lastTouchDate = body.lastTouchDate
-      ? new Date(body.lastTouchDate)
-      : null;
+  set("yearAwarded", body.yearAwarded ? parseInt(body.yearAwarded) : null);
+  set("categoryId", body.categoryId ? parseInt(body.categoryId) : null);
+  set("chapterId", parseInt(body.chapterId));
+  set("assigneeId", body.assigneeId ? parseInt(body.assigneeId) : null);
+  set("formerAwardee", body.formerAwardee || false);
+  set("onSfusaMap", body.onSfusaMap || false);
+  set("welcomeLetterSent", body.welcomeLetterSent || false);
+  set("stickersDelivered", body.stickersDelivered || false);
+  set("digitalAssetsSent", body.digitalAssetsSent || false);
+  set("certificateSent", body.certificateSent || false);
+  set("pressReleaseSent", body.pressReleaseSent || false);
+  set("socialAnnounced", body.socialAnnounced || false);
+  set(
+    "certificateRequestedDate",
+    body.certificateRequestedDate ? new Date(body.certificateRequestedDate) : null
+  );
+  set("lastTouchDate", body.lastTouchDate ? new Date(body.lastTouchDate) : null);
 
   const snail = await prisma.snail.update({
     where: { id: parseInt(id) },
