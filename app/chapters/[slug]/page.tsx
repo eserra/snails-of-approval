@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SnailCard from "@/components/SnailCard";
@@ -6,20 +7,10 @@ import type { Metadata } from "next";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const chapter = await prisma.chapter.findUnique({
-    where: { slug },
-    select: { name: true },
-  });
-  if (!chapter) return { title: "Not Found" };
-  return { title: `${chapter.name} | Snails of Approval` };
-}
-
-export default async function ChapterDetailPage({ params }: Props) {
-  const { slug } = await params;
-
-  const chapter = await prisma.chapter.findUnique({
+// cache() dedupes across generateMetadata and the page within one request —
+// Prisma calls aren't request-deduped by Next the way fetch() is.
+const getChapter = cache((slug: string) =>
+  prisma.chapter.findUnique({
     where: { slug },
     include: {
       snails: {
@@ -31,7 +22,20 @@ export default async function ChapterDetailPage({ params }: Props) {
         },
       },
     },
-  });
+  })
+);
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const chapter = await getChapter(slug);
+  if (!chapter) return { title: "Not Found" };
+  return { title: `${chapter.name} | Snails of Approval` };
+}
+
+export default async function ChapterDetailPage({ params }: Props) {
+  const { slug } = await params;
+
+  const chapter = await getChapter(slug);
 
   if (!chapter) notFound();
 
