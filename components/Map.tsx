@@ -38,8 +38,12 @@ const defaultIcon = L.icon({
 
 export default function Map({ locations }: { locations: MapLocation[] }) {
   const mapRef = useRef<L.Map | null>(null);
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // The map, tile layer, and cluster group live for the component's lifetime;
+  // filter changes only swap the markers, so tiles aren't re-downloaded and
+  // the view doesn't flicker.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -51,6 +55,22 @@ export default function Map({ locations }: { locations: MapLocation[] }) {
     }).addTo(map);
 
     const markers = L.markerClusterGroup();
+    clusterRef.current = markers;
+    map.addLayer(markers);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      clusterRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const markers = clusterRef.current;
+    if (!map || !markers) return;
+
+    markers.clearLayers();
 
     locations.forEach((loc) => {
       if (!loc.latitude || !loc.longitude) return;
@@ -74,19 +94,12 @@ export default function Map({ locations }: { locations: MapLocation[] }) {
       markers.addLayer(marker);
     });
 
-    map.addLayer(markers);
-
     if (locations.length > 0) {
       const bounds = markers.getBounds();
       if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [50, 50] });
       }
     }
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
   }, [locations]);
 
   return <div ref={containerRef} className="w-full h-full" />;
