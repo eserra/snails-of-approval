@@ -9,18 +9,38 @@ import {
   isValidInstagramHandle,
   normalizeInstagramHandle,
 } from "@/lib/instagram";
+import { parseTab, snailListWhere, tabWhere } from "@/lib/snail-filters";
 
-export async function GET() {
+// GET /api/admin/snails?tab=&mine=&notOnMap= — the admin Snails table plus the
+// tab-count badges, filtered server-side so the export can share the exact same
+// rules (see lib/snail-filters.ts). The counts are over the whole dataset per
+// tab (independent of the toggles), matching how the badges have always read.
+export async function GET(request: NextRequest) {
   try {
-    const snails = await prisma.snail.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        chapter: { select: { name: true } },
-        category: { select: { name: true, parent: { select: { name: true } } } },
-        assignee: { select: { name: true } },
-      },
-    });
-    return NextResponse.json(snails);
+    const params = new URL(request.url).searchParams;
+    const tab = parseTab(params.get("tab"));
+    const mine = params.get("mine") === "1";
+    const notOnMap = params.get("notOnMap") === "1";
+    const token = await getToken({ req: request });
+    const userId = token?.sub ? parseInt(token.sub) : null;
+
+    const [snails, leads, active, lapsed, all] = await Promise.all([
+      prisma.snail.findMany({
+        where: snailListWhere({ tab, mine, notOnMap, userId }),
+        orderBy: { name: "asc" },
+        include: {
+          chapter: { select: { name: true } },
+          category: { select: { name: true, parent: { select: { name: true } } } },
+          assignee: { select: { name: true } },
+        },
+      }),
+      prisma.snail.count({ where: tabWhere("leads") }),
+      prisma.snail.count({ where: tabWhere("active") }),
+      prisma.snail.count({ where: tabWhere("lapsed") }),
+      prisma.snail.count(),
+    ]);
+
+    return NextResponse.json({ snails, counts: { leads, active, lapsed, all } });
   } catch (error) {
     console.error("Failed to fetch snails:", error);
     return NextResponse.json({ error: "Failed to fetch snails" }, { status: 500 });

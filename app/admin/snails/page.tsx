@@ -1,11 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState } from "react";
 import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
 import CheckInModal from "@/components/CheckInModal";
+
+// Small stroke icons so the action bar signals direction at a glance: a download
+// arrow for the local export, a refresh loop for the inbound SFUSA check, an
+// up-arrow for the outbound Mailchimp push.
+const iconProps = {
+  width: 16,
+  height: 16,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+const DownloadIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+const RefreshIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+const UploadIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+const KebabIcon = () => (
+  <svg {...iconProps} fill="currentColor" stroke="none" aria-hidden="true">
+    <circle cx="12" cy="5" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="12" cy="19" r="1.6" />
+  </svg>
+);
 
 type Snail = {
   id: number;
@@ -23,6 +64,7 @@ type Snail = {
 };
 
 type Tab = "leads" | "active" | "lapsed" | "all";
+type Counts = Record<Tab, number>;
 
 const stageBadge: Record<string, string> = {
   new: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
@@ -38,26 +80,23 @@ const stageBadge: Record<string, string> = {
   blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
 };
 
-function matchesTab(snail: Snail, tab: Tab) {
-  switch (tab) {
-    case "active":
-      return snail.track === "active";
-    case "leads":
-      return (
-        snail.track === "lead" &&
-        snail.stage !== "lapsed" &&
-        snail.stage !== "deferred"
-      );
-    case "lapsed":
-      return snail.track === "lead" && snail.formerAwardee && snail.stage === "lapsed";
-    default:
-      return true;
-  }
+// The list, its tab-count badges, and the export all share one filter contract,
+// enforced server-side (lib/snail-filters.ts). The client just names the view.
+function filterQuery(tab: Tab, mineOnly: boolean, notOnMapOnly: boolean) {
+  const params = new URLSearchParams({ tab });
+  if (mineOnly) params.set("mine", "1");
+  if (notOnMapOnly) params.set("notOnMap", "1");
+  return params.toString();
 }
 
 export default function AdminSnailsPage() {
-  const { data: session } = useSession();
   const [snails, setSnails] = useState<Snail[]>([]);
+  const [counts, setCounts] = useState<Counts>({
+    leads: 0,
+    active: 0,
+    lapsed: 0,
+    all: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("leads");
   const [mineOnly, setMineOnly] = useState(false);
@@ -68,19 +107,44 @@ export default function AdminSnailsPage() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [mcReport, setMcReport] = useState<McReport | null>(null);
   const [checkInFor, setCheckInFor] = useState<Snail | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the integrations menu on an outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   function loadSnails() {
-    return fetch("/api/admin/snails")
+    setLoading(true);
+    return fetch(`/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly)}`)
       .then((r) => r.json())
       .then((data) => {
-        setSnails(data);
+        setSnails(data.snails);
+        setCounts(data.counts);
         setLoading(false);
       });
   }
 
+  // Re-fetch whenever the view changes — filtering now happens in the query.
   useEffect(() => {
     loadSnails();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, mineOnly, notOnMapOnly]);
 
   async function handleSyncMap() {
     setSyncing(true);
@@ -103,14 +167,18 @@ export default function AdminSnailsPage() {
     setSyncing(false);
   }
 
-  // Downloads the CRM directory as an .xlsx. We fetch it as a blob (rather than
-  // navigating) so we can show a spinner and surface a failure inline, and honor
-  // the filename the server stamps into Content-Disposition.
+  // Downloads the currently-filtered snails as an .xlsx. The server applies the
+  // same filter as the list from these params, so the spreadsheet matches the
+  // active tab and toggles. We fetch it as a blob (rather than navigating) so we
+  // can show a spinner and surface a failure inline, and honor the filename the
+  // server stamps into Content-Disposition.
   async function handleExport() {
     setExporting(true);
     setSyncResult(null);
     try {
-      const res = await fetch("/api/admin/export");
+      const res = await fetch(
+        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly)}`
+      );
       if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -146,25 +214,11 @@ export default function AdminSnailsPage() {
     setMcSyncing(false);
   }
 
-  const userId = session?.user?.id;
-  const filtered = snails
-    .filter((s) => matchesTab(s, tab))
-    .filter((s) => !mineOnly || (userId && String(s.assigneeId) === userId))
-    .filter((s) => !notOnMapOnly || !s.onSfusaMap);
-
-  const counts = {
-    leads: snails.filter((s) => s.track === "lead" && s.stage !== "lapsed").length,
-    active: snails.filter((s) => s.track === "active").length,
-    lapsed: snails.filter(
-      (s) => s.track === "lead" && s.formerAwardee && s.stage === "lapsed"
-    ).length,
-    all: snails.length,
-  };
-
   async function handleDelete(id: number, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     await fetch(`/api/admin/snails/${id}`, { method: "DELETE" });
-    setSnails((prev) => prev.filter((s) => s.id !== id));
+    // Refetch so the table and the tab counts both reflect the deletion.
+    await loadSnails();
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -179,29 +233,15 @@ export default function AdminSnailsPage() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Snails</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSyncMap}
-            disabled={syncing}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Check each snail against the live Slow Food USA map"
-          >
-            {syncing ? "Syncing…" : "Sync SFUSA map"}
-          </button>
-          <button
-            onClick={handleSyncMailchimp}
-            disabled={mcSyncing}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Push contacts to Mailchimp and refresh audience segments"
-          >
-            {mcSyncing ? "Syncing…" : "Sync to Mailchimp"}
-          </button>
+          {/* Everyday actions: download exactly what's filtered, and add a snail. */}
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Download the full CRM directory as a spreadsheet"
+            className="inline-flex items-center gap-1.5 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            title="Download the snails in the current view as a spreadsheet"
           >
-            {exporting ? "Exporting…" : "Export"}
+            <DownloadIcon />
+            {exporting ? "Exporting…" : `Export view (${snails.length})`}
           </button>
           <Link
             href="/admin/snails/new"
@@ -209,6 +249,57 @@ export default function AdminSnailsPage() {
           >
             + Add Snail
           </Link>
+
+          {/* Occasional integrations — grouped out of the way. These run against
+              the whole dataset, not the current view, so they live apart from
+              the filter-aware Export above. */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="More actions"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className="inline-flex items-center border border-gray-300 px-2.5 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <KebabIcon />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg z-10 py-1"
+              >
+                <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  Integrations
+                </p>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleSyncMap();
+                  }}
+                  disabled={syncing}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Check each snail against the live Slow Food USA map"
+                >
+                  <RefreshIcon />
+                  {syncing ? "Refreshing…" : "Refresh SFUSA status"}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleSyncMailchimp();
+                  }}
+                  disabled={mcSyncing}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Push every contact to Mailchimp and refresh audience segments — ignores the current filter"
+                >
+                  <UploadIcon />
+                  {mcSyncing ? "Syncing…" : "Sync all contacts to Mailchimp"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -270,7 +361,7 @@ export default function AdminSnailsPage() {
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
-      ) : filtered.length === 0 ? (
+      ) : snails.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <div className="flex justify-center mb-4 text-gray-300">
             <SnailIcon size={48} />
@@ -307,7 +398,7 @@ export default function AdminSnailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((snail) => (
+                {snails.map((snail) => (
                   <tr
                     key={snail.id}
                     className="hover:bg-gray-50 transition-colors"
