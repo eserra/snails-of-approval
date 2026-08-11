@@ -201,7 +201,7 @@ async function main() {
       slug = `${slug}-${Date.now()}`;
     }
 
-    await prisma.snail.upsert({
+    const snail = await prisma.snail.upsert({
       where: { slug },
       update: data,
       create: { slug, ...data },
@@ -210,67 +210,58 @@ async function main() {
     // Fold the spreadsheet's single address into the snail's main location.
     // Re-run safe: only create if this snail has no location yet.
     if (address || borough || zip) {
-      const snail = await prisma.snail.findUnique({ where: { slug } });
-      if (snail) {
-        const existingLocation = await prisma.location.findFirst({
-          where: { snailId: snail.id },
+      const existingLocation = await prisma.location.findFirst({
+        where: { snailId: snail.id },
+      });
+      if (!existingLocation) {
+        await prisma.location.create({
+          data: {
+            kind: "storefront",
+            address,
+            borough,
+            zip,
+            isPublic: true,
+            isPrimary: true,
+            snailId: snail.id,
+          },
         });
-        if (!existingLocation) {
-          await prisma.location.create({
-            data: {
-              kind: "storefront",
-              address,
-              borough,
-              zip,
-              isPublic: true,
-              isPrimary: true,
-              snailId: snail.id,
-            },
-          });
-        }
       }
     }
 
     // Fold the spreadsheet's single contact into a "general" contact row.
     // Re-run safe: only create if this snail has no general contact yet.
     if (contactName || email) {
-      const snail = await prisma.snail.findUnique({ where: { slug } });
-      if (snail) {
-        const existingContact = await prisma.contact.findFirst({
-          where: { snailId: snail.id, role: "general" },
+      const existingContact = await prisma.contact.findFirst({
+        where: { snailId: snail.id, role: "general" },
+      });
+      if (!existingContact) {
+        await prisma.contact.create({
+          data: {
+            name: contactName || name,
+            role: "general",
+            email,
+            isPublic: true,
+            isPrimary: true,
+            snailId: snail.id,
+          },
         });
-        if (!existingContact) {
-          await prisma.contact.create({
-            data: {
-              name: contactName || name,
-              role: "general",
-              email,
-              isPublic: true,
-              isPrimary: true,
-              snailId: snail.id,
-            },
-          });
-        }
       }
     }
 
     // Create a note if the Notes column has content
     if (notes) {
-      const snail = await prisma.snail.findUnique({ where: { slug } });
-      if (snail) {
-        // Only create note if one doesn't already exist with this content
-        const existingNote = await prisma.note.findFirst({
-          where: { snailId: snail.id, content: notes },
+      // Only create note if one doesn't already exist with this content
+      const existingNote = await prisma.note.findFirst({
+        where: { snailId: snail.id, content: notes },
+      });
+      if (!existingNote) {
+        await prisma.note.create({
+          data: {
+            content: notes,
+            snailId: snail.id,
+            authorId: adminUser.id,
+          },
         });
-        if (!existingNote) {
-          await prisma.note.create({
-            data: {
-              content: notes,
-              snailId: snail.id,
-              authorId: adminUser.id,
-            },
-          });
-        }
       }
     }
 
