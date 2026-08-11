@@ -178,7 +178,7 @@ export default function SnailForm({
   useEffect(() => {
     Promise.all([
       fetch("/api/chapters"),
-      fetch("/api/categories"),
+      fetch("/api/admin/categories"),
       fetch("/api/admin/users/list"),
     ]).then(async ([chRes, catRes, usersRes]) => {
       setChapters(await chRes.json());

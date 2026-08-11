@@ -924,7 +924,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
   useEffect(() => {
     Promise.all([
       fetch("/api/chapters"),
-      fetch("/api/categories"),
+      fetch("/api/admin/categories"),
       fetch("/api/admin/users/list"),
     ]).then(async ([chRes, catRes, uRes]) => {
       setChapters(await chRes.json());

@@ -25,7 +25,7 @@ export default function AdminCategoriesPage() {
   const [saving, setSaving] = useState(false);
 
   function loadCategories() {
-    fetch("/api/categories")
+    fetch("/api/admin/categories")
       .then((res) => res.json())
       .then(setCategories)
       .finally(() => setLoading(false));
