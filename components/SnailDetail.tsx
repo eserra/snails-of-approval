@@ -8,6 +8,7 @@ import FileUpload from "./FileUpload";
 import AddressAutocomplete, { type SearchBias } from "./AddressAutocomplete";
 import EmailList from "./gmail/EmailList";
 import ComposeEmail from "./gmail/ComposeEmail";
+import type { CheckIn } from "./CheckInModal";
 import { attachmentConfig } from "@/lib/attachment-config";
 import {
   diversityTags as diversityTagConfig,
@@ -67,7 +68,7 @@ type SnailData = Record<string, unknown> & {
     createdAt: string;
     author: { name: string };
   }[];
-  checkIns: CheckInData[];
+  checkIns: CheckIn[];
   attachments: {
     id: number;
     fileName: string;
@@ -78,17 +79,6 @@ type SnailData = Record<string, unknown> & {
     createdAt: string;
     uploadedBy: { name: string };
   }[];
-};
-
-type CheckInData = {
-  id: number;
-  visitedAt: string;
-  partySize: number;
-  occasion: string | null;
-  amount: string | null;
-  notes: string;
-  createdAt: string;
-  author: { name: string };
 };
 
 type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number } | null };
@@ -853,7 +843,7 @@ function formatAmount(amount: string | null): string | null {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function CheckInsSection({ checkIns }: { checkIns: CheckInData[] }) {
+function CheckInsSection({ checkIns }: { checkIns: CheckIn[] }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
       <h2 className="text-sm font-semibold text-gray-900">Check-ins</h2>
