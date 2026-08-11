@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/rbac";
 import bcrypt from "bcryptjs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
-  const token = await getToken({ req: request });
-  if (token?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const forbidden = await requireAdmin(request);
+  if (forbidden) return forbidden;
 
   const { id } = await params;
   const targetId = parseInt(id);
@@ -70,15 +69,14 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
-  const token = await getToken({ req: request });
-  if (token?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const forbidden = await requireAdmin(request);
+  if (forbidden) return forbidden;
 
   const { id } = await params;
 
   // Prevent deleting yourself
-  if (token.sub === id) {
+  const token = await getToken({ req: request });
+  if (token?.sub === id) {
     return NextResponse.json(
       { error: "Cannot delete your own account" },
       { status: 400 }
