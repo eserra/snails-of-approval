@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { OAuthGmailProvider } from "./oauth-provider";
-import { matchEmailToSnail } from "./matching";
-import type { GmailMessage } from "./types";
+import { buildEmailMatcher } from "./matching";
 
 interface SyncResult {
   synced: number;
@@ -34,6 +33,11 @@ export async function syncEmails(
   let pageToken: string | undefined;
   const maxPages = options?.fullSync ? 10 : 5;
 
+  // One contact query for the whole sync; each message matches in memory.
+  const matchEmail = account.chapterId
+    ? await buildEmailMatcher(account.chapterId)
+    : null;
+
   for (let page = 0; page < maxPages; page++) {
     const list = await provider.listMessages({
       query,
@@ -44,13 +48,8 @@ export async function syncEmails(
     if (list.messages.length === 0) break;
 
     for (const msg of list.messages) {
-      const chapterId = account.chapterId;
-      const snailId = chapterId
-        ? await matchEmailToSnail(
-            msg.from.email,
-            msg.to.map((t) => t.email).join(","),
-            chapterId
-          )
+      const snailId = matchEmail
+        ? matchEmail(msg.from.email, msg.to.map((t) => t.email).join(","))
         : null;
 
       await prisma.emailCache.upsert({
