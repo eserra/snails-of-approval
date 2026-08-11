@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ messages: [], total: 0, connected: false });
   }
 
+  // The connection badge probes with pageSize=0 and reads only `connected`;
+  // don't pay for a page query and a full count it will throw away.
+  if (pageSize <= 0) {
+    return NextResponse.json({ messages: [], total: 0, connected: true });
+  }
+
   const where = {
     gmailAccountId: account.id,
     ...(snailId ? { snailId: parseInt(snailId) } : {}),
