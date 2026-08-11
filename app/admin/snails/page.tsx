@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
 import CheckInModal from "@/components/CheckInModal";
@@ -23,6 +22,7 @@ type Snail = {
 };
 
 type Tab = "leads" | "active" | "lapsed" | "all";
+type Counts = Record<Tab, number>;
 
 const stageBadge: Record<string, string> = {
   new: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
@@ -38,26 +38,23 @@ const stageBadge: Record<string, string> = {
   blocked: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
 };
 
-function matchesTab(snail: Snail, tab: Tab) {
-  switch (tab) {
-    case "active":
-      return snail.track === "active";
-    case "leads":
-      return (
-        snail.track === "lead" &&
-        snail.stage !== "lapsed" &&
-        snail.stage !== "deferred"
-      );
-    case "lapsed":
-      return snail.track === "lead" && snail.formerAwardee && snail.stage === "lapsed";
-    default:
-      return true;
-  }
+// The list, its tab-count badges, and the export all share one filter contract,
+// enforced server-side (lib/snail-filters.ts). The client just names the view.
+function filterQuery(tab: Tab, mineOnly: boolean, notOnMapOnly: boolean) {
+  const params = new URLSearchParams({ tab });
+  if (mineOnly) params.set("mine", "1");
+  if (notOnMapOnly) params.set("notOnMap", "1");
+  return params.toString();
 }
 
 export default function AdminSnailsPage() {
-  const { data: session } = useSession();
   const [snails, setSnails] = useState<Snail[]>([]);
+  const [counts, setCounts] = useState<Counts>({
+    leads: 0,
+    active: 0,
+    lapsed: 0,
+    all: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("leads");
   const [mineOnly, setMineOnly] = useState(false);
@@ -70,17 +67,21 @@ export default function AdminSnailsPage() {
   const [checkInFor, setCheckInFor] = useState<Snail | null>(null);
 
   function loadSnails() {
-    return fetch("/api/admin/snails")
+    setLoading(true);
+    return fetch(`/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly)}`)
       .then((r) => r.json())
       .then((data) => {
-        setSnails(data);
+        setSnails(data.snails);
+        setCounts(data.counts);
         setLoading(false);
       });
   }
 
+  // Re-fetch whenever the view changes — filtering now happens in the query.
   useEffect(() => {
     loadSnails();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, mineOnly, notOnMapOnly]);
 
   async function handleSyncMap() {
     setSyncing(true);
@@ -103,14 +104,18 @@ export default function AdminSnailsPage() {
     setSyncing(false);
   }
 
-  // Downloads the CRM directory as an .xlsx. We fetch it as a blob (rather than
-  // navigating) so we can show a spinner and surface a failure inline, and honor
-  // the filename the server stamps into Content-Disposition.
+  // Downloads the currently-filtered snails as an .xlsx. The server applies the
+  // same filter as the list from these params, so the spreadsheet matches the
+  // active tab and toggles. We fetch it as a blob (rather than navigating) so we
+  // can show a spinner and surface a failure inline, and honor the filename the
+  // server stamps into Content-Disposition.
   async function handleExport() {
     setExporting(true);
     setSyncResult(null);
     try {
-      const res = await fetch("/api/admin/export");
+      const res = await fetch(
+        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly)}`
+      );
       if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -146,25 +151,11 @@ export default function AdminSnailsPage() {
     setMcSyncing(false);
   }
 
-  const userId = session?.user?.id;
-  const filtered = snails
-    .filter((s) => matchesTab(s, tab))
-    .filter((s) => !mineOnly || (userId && String(s.assigneeId) === userId))
-    .filter((s) => !notOnMapOnly || !s.onSfusaMap);
-
-  const counts = {
-    leads: snails.filter((s) => s.track === "lead" && s.stage !== "lapsed").length,
-    active: snails.filter((s) => s.track === "active").length,
-    lapsed: snails.filter(
-      (s) => s.track === "lead" && s.formerAwardee && s.stage === "lapsed"
-    ).length,
-    all: snails.length,
-  };
-
   async function handleDelete(id: number, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     await fetch(`/api/admin/snails/${id}`, { method: "DELETE" });
-    setSnails((prev) => prev.filter((s) => s.id !== id));
+    // Refetch so the table and the tab counts both reflect the deletion.
+    await loadSnails();
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -199,7 +190,7 @@ export default function AdminSnailsPage() {
             onClick={handleExport}
             disabled={exporting}
             className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Download the full CRM directory as a spreadsheet"
+            title="Download the snails in the current view as a spreadsheet"
           >
             {exporting ? "Exporting…" : "Export"}
           </button>
@@ -270,7 +261,7 @@ export default function AdminSnailsPage() {
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
-      ) : filtered.length === 0 ? (
+      ) : snails.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <div className="flex justify-center mb-4 text-gray-300">
             <SnailIcon size={48} />
@@ -307,7 +298,7 @@ export default function AdminSnailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((snail) => (
+                {snails.map((snail) => (
                   <tr
                     key={snail.id}
                     className="hover:bg-gray-50 transition-colors"
