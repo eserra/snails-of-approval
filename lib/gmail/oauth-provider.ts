@@ -165,30 +165,33 @@ export class OAuthGmailProvider implements GmailProvider {
       labelIds: options.labelIds,
     });
 
-    const messages: GmailMessage[] = [];
-    for (const item of res.data.messages || []) {
-      const msg = await this.gmail.users.messages.get({
-        userId: "me",
-        id: item.id!,
-        format: "metadata",
-        metadataHeaders: ["From", "To", "Cc", "Subject", "Date"],
-      });
-      const headers = msg.data.payload?.headers;
-      messages.push({
-        id: msg.data.id!,
-        threadId: msg.data.threadId!,
-        subject: getHeader(headers, "Subject") || "(no subject)",
-        from: parseEmailAddress(getHeader(headers, "From") || ""),
-        to: parseAddressList(getHeader(headers, "To")),
-        date: new Date(
-          getHeader(headers, "Date") || msg.data.internalDate || ""
-        ),
-        snippet: msg.data.snippet || "",
-        body: {},
-        isRead: !msg.data.labelIds?.includes("UNREAD"),
-        labels: msg.data.labelIds || [],
-      });
-    }
+    // The per-message metadata fetches are independent, so run them
+    // concurrently; Promise.all preserves the listing order.
+    const messages: GmailMessage[] = await Promise.all(
+      (res.data.messages || []).map(async (item) => {
+        const msg = await this.gmail.users.messages.get({
+          userId: "me",
+          id: item.id!,
+          format: "metadata",
+          metadataHeaders: ["From", "To", "Cc", "Subject", "Date"],
+        });
+        const headers = msg.data.payload?.headers;
+        return {
+          id: msg.data.id!,
+          threadId: msg.data.threadId!,
+          subject: getHeader(headers, "Subject") || "(no subject)",
+          from: parseEmailAddress(getHeader(headers, "From") || ""),
+          to: parseAddressList(getHeader(headers, "To")),
+          date: new Date(
+            getHeader(headers, "Date") || msg.data.internalDate || ""
+          ),
+          snippet: msg.data.snippet || "",
+          body: {},
+          isRead: !msg.data.labelIds?.includes("UNREAD"),
+          labels: msg.data.labelIds || [],
+        };
+      })
+    );
 
     return {
       messages,
