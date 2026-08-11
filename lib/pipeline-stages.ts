@@ -52,11 +52,6 @@ export const sideTrackStages = stages
   .filter((s) => s.track === "side")
   .map((s) => s.value);
 
-/** Everything a snail on this track can be set to, funnel plus side tracks. */
-export function stagesForTrack(track: string): Stage[] {
-  return stages.filter((s) => s.track === track || s.track === "side");
-}
-
 /** Position of a stage within its track's funnel; -1 for side tracks and unknowns. */
 export function stageIndex(track: string, stage: string | null): number {
   if (!stage) return -1;
