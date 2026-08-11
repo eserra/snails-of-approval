@@ -7,6 +7,7 @@ import { stageLabel } from "@/lib/pipeline-stages";
 import { businessStatusLabel } from "@/lib/business-status";
 import { contactRoleLabel } from "@/lib/contact-roles";
 import { getDiversityLabel, parseDiversityTags } from "@/lib/diversity-tags";
+import { CHRONO_ORDER } from "@/lib/snail-relations";
 
 // Everything the export needs, in one Prisma include so the query and the row
 // builder can never drift apart.
@@ -14,8 +15,8 @@ export const snailExportInclude = {
   chapter: { select: { name: true } },
   category: { select: { name: true, parent: { select: { name: true } } } },
   assignee: { select: { name: true } },
-  contacts: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
-  locations: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+  contacts: { orderBy: CHRONO_ORDER },
+  locations: { orderBy: CHRONO_ORDER },
 } satisfies Prisma.SnailInclude;
 
 export type ExportSnail = Prisma.SnailGetPayload<{

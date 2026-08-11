@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
-import { listContacts } from "@/lib/snail-relations";
+import { CHRONO_ORDER, listContacts } from "@/lib/snail-relations";
 import { isValidEmail } from "@/lib/email";
 
 type Ctx = { params: Promise<{ id: string; contactId: string }> };
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
     if (removed.isPrimary) {
       const next = await tx.contact.findFirst({
         where: { snailId: parseInt(id) },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }], // same order as listContacts/listLocations
+        orderBy: CHRONO_ORDER,
       });
       if (next) {
         await tx.contact.update({ where: { id: next.id }, data: { isPrimary: true } });

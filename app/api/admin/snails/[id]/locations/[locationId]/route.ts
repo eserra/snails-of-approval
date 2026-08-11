@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
-import { listLocations } from "@/lib/snail-relations";
+import { CHRONO_ORDER, listLocations } from "@/lib/snail-relations";
 import { geocodeAddress } from "@/lib/geocode";
 
 type Ctx = { params: Promise<{ id: string; locationId: string }> };
@@ -112,7 +112,7 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
     if (removed.isPrimary) {
       const next = await tx.location.findFirst({
         where: { snailId: parseInt(id) },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }], // same order as listContacts/listLocations
+        orderBy: CHRONO_ORDER,
       });
       if (next) {
         await tx.location.update({ where: { id: next.id }, data: { isPrimary: true } });
