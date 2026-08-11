@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_LABEL } from "@/lib/attachment-config";
 
 type AttachmentData = {
   id: number;
@@ -45,8 +46,8 @@ export default function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File must be under 10MB");
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setError(`File must be under ${MAX_ATTACHMENT_LABEL}`);
       return;
     }
     setError("");
@@ -181,7 +182,7 @@ export default function FileUpload({
             <span className="text-amber-700 font-medium">browse</span>
             <br />
             <span className="text-xs text-gray-400">
-              PDF, Word, or images up to 10MB
+              PDF, Word, or images up to {MAX_ATTACHMENT_LABEL}
             </span>
           </p>
         )}

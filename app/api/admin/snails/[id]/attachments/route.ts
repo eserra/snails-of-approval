@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWriteUser } from "@/lib/rbac";
 import { put } from "@vercel/blob";
-import { attachmentConfig } from "@/lib/attachment-config";
+import {
+  attachmentConfig,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_LABEL,
+} from "@/lib/attachment-config";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -41,9 +45,11 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Category is required" }, { status: 400 });
   }
 
-  // 10MB limit
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: "File must be under 10MB" }, { status: 400 });
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    return NextResponse.json(
+      { error: `File must be under ${MAX_ATTACHMENT_LABEL}` },
+      { status: 400 }
+    );
   }
 
   // Cardinality check
