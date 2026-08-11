@@ -29,3 +29,19 @@ export function listLocations(snailId: number) {
 export function primary<T extends { isPrimary: boolean }>(rows: T[]): T | undefined {
   return rows.find((r) => r.isPrimary) ?? rows[0];
 }
+
+/**
+ * Enforce the exactly-one-primary invariant on rows about to be created
+ * together: the first row flagged primary keeps the flag, every other flag is
+ * dropped, and if none was flagged the first row becomes primary.
+ */
+export function withSinglePrimary<T extends { isPrimary: boolean }>(rows: T[]): T[] {
+  let taken = false;
+  const out = rows.map((row) => {
+    const isPrimary = row.isPrimary && !taken;
+    if (isPrimary) taken = true;
+    return { ...row, isPrimary };
+  });
+  if (!taken && out.length) out[0] = { ...out[0], isPrimary: true };
+  return out;
+}

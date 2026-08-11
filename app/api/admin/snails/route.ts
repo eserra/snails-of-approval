@@ -10,6 +10,7 @@ import {
   normalizeInstagramHandle,
 } from "@/lib/instagram";
 import { parseTab, snailListWhere, tabWhere } from "@/lib/snail-filters";
+import { withSinglePrimary } from "@/lib/snail-relations";
 
 // GET /api/admin/snails?tab=&mine=&notOnMap= — the admin Snails table plus the
 // tab-count badges, filtered server-side so the export can share the exact same
@@ -100,8 +101,8 @@ export async function POST(request: NextRequest) {
     Boolean(await prisma.snail.findUnique({ where: { slug: s } }))
   );
 
-  // Build the inline locations, enforcing at most one main one (keep the first
-  // flagged), geocoding any that arrived without coordinates.
+  // Build the inline locations, geocoding any that arrived without coordinates
+  // (sequentially — Nominatim's usage policy is one request per second).
   type LocationInput = {
     label?: string;
     kind?: string;
@@ -115,8 +116,7 @@ export async function POST(request: NextRequest) {
     isPublic?: boolean;
     isPrimary?: boolean;
   };
-  let mainTaken = false;
-  const locationsCreate = [];
+  const rawLocations = [];
   const submittedLocations: LocationInput[] = Array.isArray(body.locations)
     ? body.locations.filter((l: LocationInput) => l.address?.trim())
     : [];
@@ -130,9 +130,7 @@ export async function POST(request: NextRequest) {
         longitude = coords.longitude;
       }
     }
-    const isPrimary = !!l.isPrimary && !mainTaken;
-    if (isPrimary) mainTaken = true;
-    locationsCreate.push({
+    rawLocations.push({
       label: l.label || null,
       kind: l.kind || "storefront",
       address: l.address!.trim(),
@@ -143,15 +141,20 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
       isPublic: l.isPublic !== false,
-      isPrimary,
+      isPrimary: !!l.isPrimary,
     });
   }
-  // A snail with locations but none flagged: the first one is the main one.
-  if (!mainTaken && locationsCreate.length) locationsCreate[0].isPrimary = true;
+  const locationsCreate = withSinglePrimary(rawLocations);
 
-  // Build the inline contacts, enforcing at most one primary (keep the first flagged).
-  let primaryTaken = false;
-  const contactsCreate = Array.isArray(body.contacts)
+  const rawContacts: {
+    name: string;
+    role: string;
+    email: string | null;
+    phone: string | null;
+    phoneVanity: string | null;
+    isPublic: boolean;
+    isPrimary: boolean;
+  }[] = Array.isArray(body.contacts)
     ? body.contacts
         .filter((c: { name?: string }) => c.name?.trim())
         .map(
@@ -163,23 +166,18 @@ export async function POST(request: NextRequest) {
             phoneVanity?: string;
             isPublic?: boolean;
             isPrimary?: boolean;
-          }) => {
-            const isPrimary = !!c.isPrimary && !primaryTaken;
-            if (isPrimary) primaryTaken = true;
-            return {
-              name: c.name.trim(),
-              role: c.role || "general",
-              email: c.email || null,
-              phone: c.phone || null,
-              phoneVanity: c.phoneVanity || null,
-              isPublic: !!c.isPublic,
-              isPrimary,
-            };
-          }
+          }) => ({
+            name: c.name.trim(),
+            role: c.role || "general",
+            email: c.email || null,
+            phone: c.phone || null,
+            phoneVanity: c.phoneVanity || null,
+            isPublic: !!c.isPublic,
+            isPrimary: !!c.isPrimary,
+          })
         )
     : [];
-  // A snail with contacts but none flagged: the first one is the main one.
-  if (!primaryTaken && contactsCreate.length) contactsCreate[0].isPrimary = true;
+  const contactsCreate = withSinglePrimary(rawContacts);
 
   const snail = await prisma.snail.create({
     data: {
