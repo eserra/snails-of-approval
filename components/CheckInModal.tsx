@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const inputClass =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
-const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+import { inputClass, labelClass } from "@/lib/form-styles";
 
 export type CheckIn = {
   id: number;

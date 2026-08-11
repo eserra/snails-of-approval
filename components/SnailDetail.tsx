@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { inputClass, labelClass, checkboxClass } from "@/lib/form-styles";
 import PipelineProgress from "./PipelineProgress";
 import DetailSection, { type EditFormProps } from "./DetailSection";
 import FileUpload from "./FileUpload";
@@ -94,13 +95,6 @@ type Chapter = { id: number; name: string; centroid?: { lat: number; lon: number
 type Category = { id: number; name: string; parentId: number | null };
 type UserOption = { id: number; name: string };
 
-/* ── shared styles ── */
-
-const inputClass =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
-const labelClass = "block text-sm font-medium text-gray-700 mb-1";
-const checkboxClass =
-  "h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (

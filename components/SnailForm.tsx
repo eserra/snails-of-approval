@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { inputClass, labelClass, checkboxClass } from "@/lib/form-styles";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { validateStageChange } from "@/lib/stage-requirements";
 import { stageLabel } from "@/lib/pipeline-stages";
@@ -113,12 +114,6 @@ const emptySnail: SnailData = {
 const leadStageOptions = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "blocked"];
 const editorLeadStageOptions = ["new", "applied"];
 const activeStageOptions = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
-
-const inputClass =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
-const labelClass = "block text-sm font-medium text-gray-700 mb-1";
-const checkboxClass =
-  "h-4 w-4 rounded border-gray-300 text-amber-700 focus:ring-amber-500";
 
 export default function SnailForm({
   userRole,
