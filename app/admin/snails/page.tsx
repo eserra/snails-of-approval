@@ -1,10 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
 import CheckInModal from "@/components/CheckInModal";
+
+// Small stroke icons so the action bar signals direction at a glance: a download
+// arrow for the local export, a refresh loop for the inbound SFUSA check, an
+// up-arrow for the outbound Mailchimp push.
+const iconProps = {
+  width: 16,
+  height: 16,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+const DownloadIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+const RefreshIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+const UploadIcon = () => (
+  <svg {...iconProps} aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+const KebabIcon = () => (
+  <svg {...iconProps} fill="currentColor" stroke="none" aria-hidden="true">
+    <circle cx="12" cy="5" r="1.6" />
+    <circle cx="12" cy="12" r="1.6" />
+    <circle cx="12" cy="19" r="1.6" />
+  </svg>
+);
 
 type Snail = {
   id: number;
@@ -65,6 +107,27 @@ export default function AdminSnailsPage() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [mcReport, setMcReport] = useState<McReport | null>(null);
   const [checkInFor, setCheckInFor] = useState<Snail | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the integrations menu on an outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   function loadSnails() {
     setLoading(true);
@@ -170,29 +233,15 @@ export default function AdminSnailsPage() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Snails</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSyncMap}
-            disabled={syncing}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Check each snail against the live Slow Food USA map"
-          >
-            {syncing ? "Syncing…" : "Sync SFUSA map"}
-          </button>
-          <button
-            onClick={handleSyncMailchimp}
-            disabled={mcSyncing}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Push contacts to Mailchimp and refresh audience segments"
-          >
-            {mcSyncing ? "Syncing…" : "Sync to Mailchimp"}
-          </button>
+          {/* Everyday actions: download exactly what's filtered, and add a snail. */}
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             title="Download the snails in the current view as a spreadsheet"
           >
-            {exporting ? "Exporting…" : "Export"}
+            <DownloadIcon />
+            {exporting ? "Exporting…" : `Export view (${snails.length})`}
           </button>
           <Link
             href="/admin/snails/new"
@@ -200,6 +249,57 @@ export default function AdminSnailsPage() {
           >
             + Add Snail
           </Link>
+
+          {/* Occasional integrations — grouped out of the way. These run against
+              the whole dataset, not the current view, so they live apart from
+              the filter-aware Export above. */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="More actions"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className="inline-flex items-center border border-gray-300 px-2.5 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <KebabIcon />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg z-10 py-1"
+              >
+                <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  Integrations
+                </p>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleSyncMap();
+                  }}
+                  disabled={syncing}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Check each snail against the live Slow Food USA map"
+                >
+                  <RefreshIcon />
+                  {syncing ? "Refreshing…" : "Refresh SFUSA status"}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleSyncMailchimp();
+                  }}
+                  disabled={mcSyncing}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  title="Push every contact to Mailchimp and refresh audience segments — ignores the current filter"
+                >
+                  <UploadIcon />
+                  {mcSyncing ? "Syncing…" : "Sync all contacts to Mailchimp"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
