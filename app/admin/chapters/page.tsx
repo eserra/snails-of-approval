@@ -23,11 +23,15 @@ export default function AdminChaptersPage() {
   const [state, setState] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  function loadChapters() {
     fetch("/api/chapters")
       .then((res) => res.json())
       .then(setChapters)
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadChapters();
   }, []);
 
   function startEdit(ch: Chapter) {
@@ -65,10 +69,7 @@ export default function AdminChaptersPage() {
     setShowForm(false);
     setSaving(false);
     setLoading(true);
-    fetch("/api/chapters")
-      .then((res) => res.json())
-      .then(setChapters)
-      .finally(() => setLoading(false));
+    loadChapters();
   }
 
   async function handleDelete(id: number, chName: string) {

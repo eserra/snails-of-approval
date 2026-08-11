@@ -26,15 +26,19 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  function loadUsers() {
+    fetch("/api/admin/users")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setUsers)
+      .finally(() => setLoading(false));
+  }
+
   useEffect(() => {
     if (session?.user?.role !== "admin") {
       router.push("/admin");
       return;
     }
-    fetch("/api/admin/users")
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setUsers)
-      .finally(() => setLoading(false));
+    loadUsers();
   }, [session, router]);
 
   function startNew() {
@@ -90,10 +94,7 @@ export default function AdminUsersPage() {
     setShowForm(false);
     setSaving(false);
     setLoading(true);
-    fetch("/api/admin/users")
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setUsers)
-      .finally(() => setLoading(false));
+    loadUsers();
   }
 
   async function handleDelete(id: number, userName: string) {
