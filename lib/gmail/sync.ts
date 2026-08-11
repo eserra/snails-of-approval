@@ -14,9 +14,7 @@ export async function syncEmails(
 ): Promise<SyncResult> {
   const provider = await OAuthGmailProvider.create(lookup);
   if (!provider) throw new Error("Gmail account not connected");
-
-  const account = await prisma.gmailAccount.findFirst({ where: lookup });
-  if (!account) throw new Error("Gmail account not found");
+  const { account } = provider;
 
   // Determine the query: incremental sync fetches only newer messages
   let query: string | undefined;

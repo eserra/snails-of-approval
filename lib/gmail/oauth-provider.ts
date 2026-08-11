@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import type { gmail_v1 } from "googleapis";
+import type { GmailAccount } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "./crypto";
 import type {
@@ -110,17 +111,13 @@ function buildRawEmail(params: SendEmailParams, fromAddress: string): string {
 
 export class OAuthGmailProvider implements GmailProvider {
   private gmail: gmail_v1.Gmail;
-  private accountId: number;
-  private emailAddress: string;
+  /** The GmailAccount row this provider was created from, so callers that
+   * need its id or chapterId don't repeat the lookup. */
+  readonly account: GmailAccount;
 
-  private constructor(
-    gmail: gmail_v1.Gmail,
-    accountId: number,
-    emailAddress: string
-  ) {
+  private constructor(gmail: gmail_v1.Gmail, account: GmailAccount) {
     this.gmail = gmail;
-    this.accountId = accountId;
-    this.emailAddress = emailAddress;
+    this.account = account;
   }
 
   static async create(
@@ -156,7 +153,7 @@ export class OAuthGmailProvider implements GmailProvider {
     }
 
     const gmail = google.gmail({ version: "v1", auth: oauth2 });
-    return new OAuthGmailProvider(gmail, account.id, account.emailAddress);
+    return new OAuthGmailProvider(gmail, account);
   }
 
   async listMessages(options: ListOptions): Promise<ListResult> {
@@ -227,7 +224,7 @@ export class OAuthGmailProvider implements GmailProvider {
   }
 
   async sendMessage(params: SendEmailParams): Promise<GmailMessage> {
-    const raw = buildRawEmail(params, this.emailAddress);
+    const raw = buildRawEmail(params, this.account.emailAddress);
     const res = await this.gmail.users.messages.send({
       userId: "me",
       requestBody: { raw, threadId: params.threadId },
