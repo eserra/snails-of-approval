@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { stageLabel } from "@/lib/pipeline-stages";
+// Type-only import keeps the Prisma dependency out of the client bundle.
+import type { SnailTab } from "@/lib/snail-filters";
 import SnailIcon from "@/components/SnailIcon";
 import CheckInModal from "@/components/CheckInModal";
 
@@ -63,8 +65,7 @@ type Snail = {
   assignee: { name: string } | null;
 };
 
-type Tab = "leads" | "active" | "lapsed" | "all";
-type Counts = Record<Tab, number>;
+type Counts = Record<SnailTab, number>;
 
 const stageBadge: Record<string, string> = {
   new: "bg-gray-100 text-gray-600 ring-1 ring-gray-500/10",
@@ -82,7 +83,7 @@ const stageBadge: Record<string, string> = {
 
 // The list, its tab-count badges, and the export all share one filter contract,
 // enforced server-side (lib/snail-filters.ts). The client just names the view.
-function filterQuery(tab: Tab, mineOnly: boolean, notOnMapOnly: boolean) {
+function filterQuery(tab: SnailTab, mineOnly: boolean, notOnMapOnly: boolean) {
   const params = new URLSearchParams({ tab });
   if (mineOnly) params.set("mine", "1");
   if (notOnMapOnly) params.set("notOnMap", "1");
@@ -98,7 +99,7 @@ export default function AdminSnailsPage() {
     all: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("leads");
+  const [tab, setTab] = useState<SnailTab>("leads");
   const [mineOnly, setMineOnly] = useState(false);
   const [notOnMapOnly, setNotOnMapOnly] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -221,7 +222,7 @@ export default function AdminSnailsPage() {
     await loadSnails();
   }
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: SnailTab; label: string }[] = [
     { key: "leads", label: "Leads" },
     { key: "active", label: "Active" },
     { key: "lapsed", label: "Lapsed" },
