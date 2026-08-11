@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { requireWrite } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,6 +16,9 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 }
 
 export async function POST(request: NextRequest, { params }: Ctx) {
+  const forbidden = await requireWrite(request);
+  if (forbidden) return forbidden;
+
   const { id } = await params;
   const token = await getToken({ req: request });
   if (!token?.sub) {
