@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/app/generated/prisma/client";
 
 // Rows created in one transaction share a createdAt, so id breaks the tie and the
 // order stays stable. This is also the order the "oldest remaining inherits the
@@ -44,4 +45,103 @@ export function withSinglePrimary<T extends { isPrimary: boolean }>(rows: T[]): 
   });
   if (!taken && out.length) out[0] = { ...out[0], isPrimary: true };
   return out;
+}
+
+/**
+ * The subset of a Prisma delegate the shared invariant helpers below need.
+ * Both prisma.contact and prisma.location satisfy it, inside and outside a
+ * transaction, which is what lets one implementation own the trickiest logic
+ * in the CRM instead of two parallel copies per model.
+ */
+type RelationDelegate = {
+  findFirst(args: {
+    where: { snailId: number; id?: number };
+    select?: { id: boolean };
+    orderBy?: typeof CHRONO_ORDER;
+  }): PromiseLike<{ id: number } | null>;
+  findUnique(args: { where: { id: number } }): PromiseLike<{ isPrimary: boolean } | null>;
+  updateMany(args: {
+    where: { snailId: number; isPrimary: boolean; id: { not: number } };
+    data: { isPrimary: boolean };
+  }): PromiseLike<unknown>;
+  update(args: { where: { id: number }; data: Record<string, unknown> }): PromiseLike<unknown>;
+  delete(args: { where: { id: number } }): PromiseLike<{ isPrimary: boolean }>;
+  count(args: { where: { snailId: number; id: { not: number } } }): PromiseLike<number>;
+};
+
+type PickDelegate = (client: Prisma.TransactionClient) => RelationDelegate;
+
+export type RelationWriteError = "not_found" | "cannot_unset_primary" | "last_row";
+
+/**
+ * Update one contact/location scoped to its snail, holding the exactly-one-
+ * primary invariant: the primary flag can't be unset directly (promote another
+ * row instead), and promoting a row demotes the incumbent in the same
+ * transaction. Returns null on success; the route maps errors to HTTP copy.
+ */
+export async function updateRelationRow(
+  pick: PickDelegate,
+  snailId: number,
+  rowId: number,
+  data: Record<string, unknown>
+): Promise<RelationWriteError | null> {
+  // Scope to the snail in the path: the invariants below are checked against
+  // this snail, so the target must belong to it.
+  const owned = await pick(prisma).findFirst({
+    where: { snailId, id: rowId },
+    select: { id: true },
+  });
+  if (!owned) return "not_found";
+
+  if (data.isPrimary === false) {
+    const current = await pick(prisma).findUnique({ where: { id: rowId } });
+    if (current?.isPrimary) return "cannot_unset_primary";
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (data.isPrimary === true) {
+      await pick(tx).updateMany({
+        where: { snailId, isPrimary: true, id: { not: rowId } },
+        data: { isPrimary: false },
+      });
+    }
+    return pick(tx).update({ where: { id: rowId }, data });
+  });
+  return null;
+}
+
+/**
+ * Delete one contact/location scoped to its snail: a snail keeps at least one
+ * row, and removing the primary hands the flag to the oldest remaining row
+ * (CHRONO_ORDER) in the same transaction.
+ */
+export async function deleteRelationRow(
+  pick: PickDelegate,
+  snailId: number,
+  rowId: number
+): Promise<RelationWriteError | null> {
+  const owned = await pick(prisma).findFirst({
+    where: { snailId, id: rowId },
+    select: { id: true },
+  });
+  if (!owned) return "not_found";
+
+  const remaining = await pick(prisma).count({
+    where: { snailId, id: { not: rowId } },
+  });
+  if (remaining === 0) return "last_row";
+
+  await prisma.$transaction(async (tx) => {
+    const removed = await pick(tx).delete({ where: { id: rowId } });
+    if (removed.isPrimary) {
+      const next = await pick(tx).findFirst({
+        where: { snailId },
+        orderBy: CHRONO_ORDER,
+      });
+      if (next) {
+        await pick(tx).update({ where: { id: next.id }, data: { isPrimary: true } });
+      }
+    }
+  });
+  return null;
 }
