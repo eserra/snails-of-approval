@@ -34,12 +34,3 @@ export async function buildEmailMatcher(
     return null;
   };
 }
-
-/** One-off variant for matching a single email outside a sync loop. */
-export async function matchEmailToSnail(
-  fromAddress: string,
-  toAddresses: string,
-  chapterId: number
-): Promise<number | null> {
-  return (await buildEmailMatcher(chapterId))(fromAddress, toAddresses);
-}

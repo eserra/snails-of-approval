@@ -24,7 +24,5 @@ export async function getGmailProvider(
 }
 
 export * from "./types";
-export { encrypt, decrypt } from "./crypto";
-export { syncEmails } from "./sync";
-export { matchEmailToSnail } from "./matching";
+export { encrypt } from "./crypto";
 export { getOAuth2Client } from "./oauth-provider";
