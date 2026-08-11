@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
+import { uniqueSlug } from "@/lib/slug";
 import { geocodeAddress } from "@/lib/geocode";
 import { requireWriteUser } from "@/lib/rbac";
 import { isValidEmail } from "@/lib/email";
@@ -96,11 +96,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let slug = slugify(body.name);
-  const existing = await prisma.snail.findUnique({ where: { slug } });
-  if (existing) {
-    slug = `${slug}-${Date.now()}`;
-  }
+  const slug = await uniqueSlug(body.name, async (s) =>
+    Boolean(await prisma.snail.findUnique({ where: { slug: s } }))
+  );
 
   // Build the inline locations, enforcing at most one main one (keep the first
   // flagged), geocoding any that arrived without coordinates.

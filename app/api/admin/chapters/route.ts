@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
+import { uniqueSlug } from "@/lib/slug";
 import { requireAdmin } from "@/lib/rbac";
 
 export async function POST(request: NextRequest) {
@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
-  let slug = slugify(body.name);
-  const existing = await prisma.chapter.findUnique({ where: { slug } });
-  if (existing) slug = `${slug}-${Date.now()}`;
+  const slug = await uniqueSlug(body.name, async (s) =>
+    Boolean(await prisma.chapter.findUnique({ where: { slug: s } }))
+  );
 
   const chapter = await prisma.chapter.create({
     data: {

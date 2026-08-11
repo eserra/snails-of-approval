@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slug";
+import { uniqueSlug } from "@/lib/slug";
 import { requireAdmin } from "@/lib/rbac";
 
 // Categories with snail counts for the admin management page. Counts include
@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
-  let slug = slugify(body.name);
-  const existing = await prisma.category.findUnique({ where: { slug } });
-  if (existing) slug = `${slug}-${Date.now()}`;
+  const slug = await uniqueSlug(body.name, async (s) =>
+    Boolean(await prisma.category.findUnique({ where: { slug: s } }))
+  );
 
   const category = await prisma.category.create({
     data: {
