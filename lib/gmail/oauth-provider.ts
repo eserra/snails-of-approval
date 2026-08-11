@@ -234,14 +234,6 @@ export class OAuthGmailProvider implements GmailProvider {
     });
     return this.getMessage(res.data.id!);
   }
-
-  async getProfile(): Promise<{ emailAddress: string; messagesTotal: number }> {
-    const res = await this.gmail.users.getProfile({ userId: "me" });
-    return {
-      emailAddress: res.data.emailAddress!,
-      messagesTotal: res.data.messagesTotal || 0,
-    };
-  }
 }
 
 export { getOAuth2Client };

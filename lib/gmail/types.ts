@@ -51,5 +51,4 @@ export interface GmailProvider {
   getMessage(messageId: string): Promise<GmailMessage>;
   getThread(threadId: string): Promise<GmailThread>;
   sendMessage(params: SendEmailParams): Promise<GmailMessage>;
-  getProfile(): Promise<{ emailAddress: string; messagesTotal: number }>;
 }
