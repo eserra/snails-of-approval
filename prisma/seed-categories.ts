@@ -1,6 +1,4 @@
-import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "./script-client.js";
 import { seedCategories } from "./sfusa-taxonomy.js";
 
 // Categories-only seed. Unlike the full `npm run seed`, this touches nothing
@@ -8,9 +6,6 @@ import { seedCategories } from "./sfusa-taxonomy.js";
 // against production to populate (or refresh) the SFUSA taxonomy.
 //
 //   DATABASE_URL="<production url>" npm run seed:categories
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
 
 seedCategories(prisma)
   .then(async () => {

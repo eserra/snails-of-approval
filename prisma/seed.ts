@@ -1,13 +1,6 @@
-import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "./script-client.js";
 import { hashPassword } from "../lib/users.js";
 import { seedCategories } from "./sfusa-taxonomy.js";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Categories: the SFUSA taxonomy (shared with prisma/seed-categories.ts).

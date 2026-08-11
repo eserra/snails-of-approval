@@ -1,16 +1,9 @@
-import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "./script-client.js";
 import * as XLSX from "xlsx";
 import { slugify } from "../lib/slug.js";
 import { stages } from "../lib/pipeline-stages.js";
 import { normalizeInstagramHandle } from "../lib/instagram.js";
 import path from "path";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-const prisma = new PrismaClient({ adapter });
 
 // Map spreadsheet assignee first names to user emails
 const assigneeMap: Record<string, string> = {

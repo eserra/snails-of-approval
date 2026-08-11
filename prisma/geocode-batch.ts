@@ -1,12 +1,5 @@
-import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "./script-client.js";
 import { geocodeAddress } from "../lib/geocode.js";
-
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
-const prisma = new PrismaClient({ adapter });
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
