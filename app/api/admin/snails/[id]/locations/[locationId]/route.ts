@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { CHRONO_ORDER, listLocations } from "@/lib/snail-relations";
-import { geocodeAddress } from "@/lib/geocode";
+import { resolveCoordinates } from "@/lib/geocode";
 
 type Ctx = { params: Promise<{ id: string; locationId: string }> };
 
@@ -31,15 +31,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 
   // Re-geocode when the address changed and no manual coordinates were supplied.
   if ("address" in body) {
-    let latitude = body.latitude ? parseFloat(body.latitude) : null;
-    let longitude = body.longitude ? parseFloat(body.longitude) : null;
-    if (body.address && !latitude && !longitude) {
-      const coords = await geocodeAddress(body.address);
-      if (coords) {
-        latitude = coords.latitude;
-        longitude = coords.longitude;
-      }
-    }
+    const { latitude, longitude } = await resolveCoordinates(body);
     data.latitude = latitude;
     data.longitude = longitude;
   }

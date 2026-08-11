@@ -1,3 +1,22 @@
+/**
+ * The coordinate rule every location write shares: manual coordinates win;
+ * when none were supplied, geocode the address; when that fails too, store
+ * nulls (an admin can fill them in later).
+ */
+export async function resolveCoordinates(input: {
+  address?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+}): Promise<{ latitude: number | null; longitude: number | null }> {
+  let latitude = input.latitude ? parseFloat(input.latitude) : null;
+  let longitude = input.longitude ? parseFloat(input.longitude) : null;
+  if (input.address && !latitude && !longitude) {
+    const coords = await geocodeAddress(input.address);
+    if (coords) ({ latitude, longitude } = coords);
+  }
+  return { latitude, longitude };
+}
+
 export async function geocodeAddress(
   address: string
 ): Promise<{ latitude: number; longitude: number } | null> {

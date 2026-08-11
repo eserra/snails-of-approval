@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { listLocations } from "@/lib/snail-relations";
-import { geocodeAddress } from "@/lib/geocode";
+import { resolveCoordinates } from "@/lib/geocode";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -21,16 +21,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Address is required" }, { status: 400 });
   }
 
-  // Geocode if an address was given without manual coordinates.
-  let latitude = body.latitude ? parseFloat(body.latitude) : null;
-  let longitude = body.longitude ? parseFloat(body.longitude) : null;
-  if (body.address && !latitude && !longitude) {
-    const coords = await geocodeAddress(body.address);
-    if (coords) {
-      latitude = coords.latitude;
-      longitude = coords.longitude;
-    }
-  }
+  const { latitude, longitude } = await resolveCoordinates(body);
 
   const snailId = parseInt(id);
   await prisma.$transaction(async (tx) => {

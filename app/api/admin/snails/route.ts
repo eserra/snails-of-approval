@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { uniqueSlug } from "@/lib/slug";
-import { geocodeAddress } from "@/lib/geocode";
+import { resolveCoordinates } from "@/lib/geocode";
 import { requireWriteUser } from "@/lib/rbac";
 import { isValidEmail } from "@/lib/email";
 import {
@@ -121,15 +121,7 @@ export async function POST(request: NextRequest) {
     ? body.locations.filter((l: LocationInput) => l.address?.trim())
     : [];
   for (const l of submittedLocations) {
-    let latitude = l.latitude ? parseFloat(l.latitude) : null;
-    let longitude = l.longitude ? parseFloat(l.longitude) : null;
-    if (!latitude && !longitude) {
-      const coords = await geocodeAddress(l.address!);
-      if (coords) {
-        latitude = coords.latitude;
-        longitude = coords.longitude;
-      }
-    }
+    const { latitude, longitude } = await resolveCoordinates(l);
     rawLocations.push({
       label: l.label || null,
       kind: l.kind || "storefront",
