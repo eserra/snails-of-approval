@@ -46,6 +46,14 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 
   const lId = parseInt(locationId);
 
+  // Scope everything below to the snail in the path: the primary/keep-one
+  // invariants are checked against this snail, so the target must belong to it.
+  const owned = await prisma.location.findFirst({
+    where: { id: lId, snailId: parseInt(id) },
+    select: { id: true },
+  });
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   // A snail always has exactly one main location, so it can't be unset directly —
   // promoting a different one is how you move it.
   if (data.isPrimary === false) {
@@ -77,6 +85,14 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   if (forbidden) return forbidden;
 
   const { id, locationId } = await params;
+
+  // The location must belong to the snail in the path, or the keep-one guard and
+  // successor promotion below would operate on the wrong snail.
+  const owned = await prisma.location.findFirst({
+    where: { id: parseInt(locationId), snailId: parseInt(id) },
+    select: { id: true },
+  });
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // A snail must keep at least one location.
   const remaining = await prisma.location.count({
