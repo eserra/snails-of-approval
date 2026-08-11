@@ -12,7 +12,7 @@ export default function Filters({ className = "" }: { className?: string }) {
   const [categories, setCategories] = useState<FilterOption[]>([]);
 
   useEffect(() => {
-    Promise.all([fetch("/api/chapters"), fetch("/api/categories")]).then(
+    Promise.all([fetch("/api/chapters?fields=basic"), fetch("/api/categories")]).then(
       async ([chapRes, catRes]) => {
         setChapters(await chapRes.json());
         setCategories(await catRes.json());

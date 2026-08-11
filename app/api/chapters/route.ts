@@ -1,9 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type Centroid = { chapter_id: number; lat: string | null; lon: string | null };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // The public filter dropdowns only render slug + name; let them skip the
+  // published-count and centroid aggregations the full payload pays for.
+  if (new URL(request.url).searchParams.get("fields") === "basic") {
+    return NextResponse.json(
+      await prisma.chapter.findMany({
+        orderBy: { name: "asc" },
+        select: { slug: true, name: true },
+      })
+    );
+  }
+
   const [chapters, centroids] = await Promise.all([
     prisma.chapter.findMany({
       orderBy: { name: "asc" },
