@@ -68,9 +68,6 @@ export function validateStageChange(
       const has = snail.attachments?.some((a) => a.category === req.category);
       return { label: req.label, met: !!has };
     }
-    if (req.type === "field") {
-      return { label: req.label, met: !!snail[req.field] };
-    }
-    return { label: "Unknown requirement", met: false };
+    return { label: req.label, met: !!snail[req.field] };
   });
 }
