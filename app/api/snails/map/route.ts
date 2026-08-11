@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
+import { publicSnailWhere } from "@/lib/snail-filters";
 
 // One marker per public, geocoded location. A snail with several locations gets
 // several markers, all linking back to the same snail page.
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const chapter = searchParams.get("chapter") || "";
-  const category = searchParams.get("category") || "";
-  const year = searchParams.get("year") || "";
-
-  const snail: Prisma.SnailWhereInput = { status: "published" };
-  if (chapter) snail.chapter = { slug: chapter };
-  if (category) snail.category = { slug: category };
-  if (year) snail.yearAwarded = parseInt(year);
-
   const where: Prisma.LocationWhereInput = {
     isPublic: true,
     latitude: { not: null },
     longitude: { not: null },
-    snail,
+    snail: publicSnailWhere(request.nextUrl.searchParams),
   };
 
   const locations = await prisma.location.findMany({

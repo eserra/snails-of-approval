@@ -1,38 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
+import { publicSnailWhere } from "@/lib/snail-filters";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search") || "";
-  const chapter = searchParams.get("chapter") || "";
-  const category = searchParams.get("category") || "";
-  const year = searchParams.get("year") || "";
   const sort = searchParams.get("sort") || "name";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
 
-  const where: Prisma.SnailWhereInput = {
-    status: "published",
-  };
+  const where = publicSnailWhere(searchParams);
 
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
     ];
-  }
-
-  if (chapter) {
-    where.chapter = { slug: chapter };
-  }
-
-  if (category) {
-    where.category = { slug: category };
-  }
-
-  if (year) {
-    where.yearAwarded = parseInt(year);
   }
 
   const orderBy: Prisma.SnailOrderByWithRelationInput =

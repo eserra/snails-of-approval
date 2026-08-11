@@ -32,6 +32,24 @@ export function tabWhere(tab: SnailTab): Prisma.SnailWhereInput {
   }
 }
 
+/**
+ * The public visibility contract: published snails, optionally narrowed by the
+ * chapter/category/year query params the public pages share. Used by both the
+ * directory and the map endpoints so the two can never drift apart.
+ */
+export function publicSnailWhere(
+  searchParams: URLSearchParams
+): Prisma.SnailWhereInput {
+  const where: Prisma.SnailWhereInput = { status: "published" };
+  const chapter = searchParams.get("chapter");
+  const category = searchParams.get("category");
+  const year = searchParams.get("year");
+  if (chapter) where.chapter = { slug: chapter };
+  if (category) where.category = { slug: category };
+  if (year) where.yearAwarded = parseInt(year);
+  return where;
+}
+
 export type SnailListFilters = {
   tab: SnailTab;
   mine?: boolean;
