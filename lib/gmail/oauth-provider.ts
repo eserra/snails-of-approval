@@ -73,7 +73,7 @@ function parseMessage(msg: gmail_v1.Schema$Message): GmailMessage {
     subject: getHeader(headers, "Subject") || "(no subject)",
     from: parseEmailAddress(getHeader(headers, "From") || ""),
     to: parseAddressList(getHeader(headers, "To")),
-    cc: parseAddressList(getHeader(headers, "Cc")) || undefined,
+    cc: parseAddressList(getHeader(headers, "Cc")),
     date: new Date(getHeader(headers, "Date") || msg.internalDate || ""),
     snippet: msg.snippet || "",
     body,
