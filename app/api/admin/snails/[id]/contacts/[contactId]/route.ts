@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { listContacts } from "@/lib/snail-relations";
 import { isValidEmail } from "@/lib/email";
+import { sanitizeRoles } from "@/lib/contact-roles";
 
 type Ctx = { params: Promise<{ id: string; contactId: string }> };
 
@@ -20,7 +21,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     }
     data.name = body.name.trim();
   }
-  if ("role" in body) data.role = body.role || "general";
+  if ("roles" in body) data.roles = sanitizeRoles(body.roles);
   if ("email" in body) {
     if (body.email?.trim() && !isValidEmail(body.email)) {
       return NextResponse.json(

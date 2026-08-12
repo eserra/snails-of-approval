@@ -19,7 +19,7 @@ type MapLocation = {
   isPrimary: boolean;
   slug: string;
   name: string;
-  yearAwarded: number;
+  yearFirstAwarded: number | null;
   category: { name: string; slug: string } | null;
   chapter: { name: string; slug: string };
 };
@@ -68,7 +68,7 @@ export default function Map({ locations }: { locations: MapLocation[] }) {
           <strong><a href="/snails/${loc.slug}">${loc.name}</a></strong>${site}
           <br/><span style="color:#666">${loc.category?.name || ""} &middot; ${loc.chapter.name}</span>
           ${loc.address ? `<br/><span style="color:#999">${loc.address}</span>` : ""}
-          ${loc.yearAwarded ? `<br/><span style="color:#999">Awarded ${loc.yearAwarded}</span>` : ""}
+          ${loc.yearFirstAwarded ? `<br/><span style="color:#999">Awarded ${loc.yearFirstAwarded}</span>` : ""}
         </div>`
       );
       markers.addLayer(marker);

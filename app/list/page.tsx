@@ -8,7 +8,7 @@ import Filters from "@/components/Filters";
 type Snail = {
   slug: string;
   name: string;
-  yearAwarded: number;
+  yearFirstAwarded: number | null;
   description: string | null;
   chapter: { name: string; slug: string };
   category: { name: string; slug: string };

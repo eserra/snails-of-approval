@@ -3,7 +3,7 @@ import Link from "next/link";
 type SnailCardProps = {
   slug: string;
   name: string;
-  yearAwarded: number | null;
+  yearFirstAwarded: number | null;
   description: string | null;
   chapter: { name: string };
   category: { name: string } | null;
@@ -12,7 +12,7 @@ type SnailCardProps = {
 export default function SnailCard({
   slug,
   name,
-  yearAwarded,
+  yearFirstAwarded,
   description,
   chapter,
   category,
@@ -24,9 +24,9 @@ export default function SnailCard({
     >
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-gray-900">{name}</h3>
-        {yearAwarded && (
+        {yearFirstAwarded && (
           <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full whitespace-nowrap ml-2">
-            {yearAwarded}
+            {yearFirstAwarded}
           </span>
         )}
       </div>

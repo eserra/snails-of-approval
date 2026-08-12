@@ -18,15 +18,21 @@ export const MERGE_FIELDS: MergeFieldDef[] = [
   { tag: "STAGE", name: "Pipeline stage", type: "text" },
   { tag: "BIZSTATUS", name: "Business status", type: "text" },
   { tag: "CATEGORY", name: "Category", type: "text" },
-  { tag: "YEARAWARD", name: "Year awarded", type: "number" },
+  // Tag stays YEARAWARD: it's the external key ensureSchema matches on, and
+  // renaming it would orphan the audience's existing field and its segments.
+  { tag: "YEARAWARD", name: "Year first awarded", type: "number" },
 ];
 
 // A saved segment defined by conditions over merge fields. `match: "all"` ANDs
 // the conditions. Add rows here to grow the set — ensureSchema creates any that
 // don't exist yet, keyed by name.
+// `contains` exists for merge fields that hold a set rather than a single value:
+// ROLE joins a contact's roles into one string, so targeting one role means
+// matching inside it. Safe only because no role value is a substring of another
+// — lib/contact-roles.ts enforces that.
 type SegmentDef = {
   name: string;
-  conditions: { field: string; op: "is"; value: string }[];
+  conditions: { field: string; op: "is" | "contains"; value: string }[];
 };
 
 export const SEGMENT_DEFS: SegmentDef[] = [

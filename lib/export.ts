@@ -5,7 +5,7 @@
 import { Prisma } from "@/app/generated/prisma/client";
 import { stageLabel } from "@/lib/pipeline-stages";
 import { businessStatusLabel } from "@/lib/business-status";
-import { contactRoleLabel } from "@/lib/contact-roles";
+import { contactRolesLabel } from "@/lib/contact-roles";
 import { getDiversityLabel, parseDiversityTags } from "@/lib/diversity-tags";
 
 // Everything the export needs, in one Prisma include so the query and the row
@@ -56,7 +56,7 @@ const columns: { header: string; get: (s: ExportSnail) => Cell }[] = [
   { header: "Name", get: (s) => s.name },
   { header: "Slug", get: (s) => s.slug },
   { header: "Status", get: (s) => s.status },
-  { header: "Year Awarded", get: (s) => s.yearAwarded ?? "" },
+  { header: "Year First Awarded", get: (s) => s.yearFirstAwarded ?? "" },
   { header: "Chapter", get: (s) => s.chapter.name },
   { header: "Category", get: categoryLabel },
   { header: "Website", get: (s) => s.website ?? "" },
@@ -89,10 +89,10 @@ const columns: { header: string; get: (s: ExportSnail) => Cell }[] = [
 
   { header: "Contact Name", get: (s) => primary(s.contacts)?.name ?? "" },
   {
-    header: "Contact Role",
+    header: "Contact Roles",
     get: (s) => {
       const c = primary(s.contacts);
-      return c ? contactRoleLabel(c.role) : "";
+      return c ? contactRolesLabel(c.roles) : "";
     },
   },
   { header: "Contact Email", get: (s) => primary(s.contacts)?.email ?? "" },

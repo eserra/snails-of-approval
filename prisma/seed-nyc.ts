@@ -11,7 +11,7 @@ const nycSnails = [
   {
     slug: "di-fara-pizza",
     name: "Di Fara Pizza",
-    yearAwarded: 2024,
+    yearFirstAwarded: 2024,
     description:
       "A Brooklyn institution since 1965. Dom DeMarco hand-makes every pizza with imported Italian ingredients, fresh basil snipped with scissors, and a generous drizzle of olive oil. Each pie is a masterwork of simplicity and devotion.",
     address: "1424 Avenue J, Brooklyn, NY 11230",
@@ -27,7 +27,7 @@ const nycSnails = [
   {
     slug: "breads-bakery",
     name: "Breads Bakery",
-    yearAwarded: 2024,
+    yearFirstAwarded: 2024,
     description:
       "Known for their legendary chocolate babka and artisan breads baked fresh daily. Israeli-born baker Uri Scheft brings Old World technique to Union Square with exceptional sourdoughs, challah, and pastries.",
     address: "18 E 16th St, New York, NY 10003",
@@ -43,7 +43,7 @@ const nycSnails = [
   {
     slug: "union-square-greenmarket",
     name: "Union Square Greenmarket",
-    yearAwarded: 2023,
+    yearFirstAwarded: 2023,
     description:
       "The crown jewel of NYC farmers markets, operating since 1976. Over 140 regional farmers, fishers, and bakers sell directly to the public year-round. A vital link between local agriculture and New York City's food culture.",
     address: "E 17th St & Union Square W, New York, NY 10003",
@@ -58,7 +58,7 @@ const nycSnails = [
   {
     slug: "saxelby-cheesemongers",
     name: "Saxelby Cheesemongers",
-    yearAwarded: 2023,
+    yearFirstAwarded: 2023,
     description:
       "America's first all-American artisan cheese shop, sourcing exclusively from small Northeast farms. Anne Saxelby built direct relationships with cheesemakers, bringing exceptional farmstead cheeses to the Essex Market and beyond.",
     address: "88 Essex St, New York, NY 10002",
@@ -75,7 +75,7 @@ const nycSnails = [
   {
     slug: "red-jacket-orchards",
     name: "Red Jacket Orchards",
-    yearAwarded: 2022,
+    yearFirstAwarded: 2022,
     description:
       "A fourth-generation family farm in the Finger Lakes growing over 50 varieties of tree fruits and berries. Their cold-pressed juices and farm-fresh produce are staples at NYC greenmarkets. Champions of sustainable orchard management.",
     address: "957 Route 5 & 20, Geneva, NY 14456",
@@ -91,7 +91,7 @@ const nycSnails = [
   {
     slug: "roberta-s",
     name: "Roberta's",
-    yearAwarded: 2022,
+    yearFirstAwarded: 2022,
     description:
       "A Bushwick pioneer that transformed a former garage into one of NYC's most celebrated pizzerias. Wood-fired pies made with ingredients from their own rooftop garden and local farms. A driving force in Brooklyn's food renaissance.",
     address: "261 Moore St, Brooklyn, NY 11206",
@@ -130,7 +130,7 @@ async function main() {
           create: [
             {
               name: snail.name,
-              role: "general",
+              roles: [],
               email,
               phone,
               isPublic: true,

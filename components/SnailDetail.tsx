@@ -14,7 +14,7 @@ import {
   getDiversityLabel,
   serializeDiversityTags,
 } from "@/lib/diversity-tags";
-import { contactRoles, contactRoleLabel } from "@/lib/contact-roles";
+import { contactRoles, contactRolesLabel } from "@/lib/contact-roles";
 import { businessStatuses, businessStatusLabel } from "@/lib/business-status";
 import { locationKinds, locationKindLabel, boroughs } from "@/lib/location-kinds";
 import { stageLabel, hasRecommendationStage } from "@/lib/pipeline-stages";
@@ -26,7 +26,7 @@ import { instagramUrlFromHandle, normalizeInstagramHandle } from "@/lib/instagra
 type ContactData = {
   id: number;
   name: string;
-  role: string;
+  roles: string[];
   email: string | null;
   phone: string | null;
   phoneVanity: string | null;
@@ -280,7 +280,7 @@ function RecommendationEditForm({ onSave, onCancel, saving, snail }: EditFormPro
 function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
     formerAwardee: snail.formerAwardee,
-    yearAwarded: snail.yearAwarded != null ? String(snail.yearAwarded) : "",
+    yearFirstAwarded: snail.yearFirstAwarded != null ? String(snail.yearFirstAwarded) : "",
     source: (snail.source as string) || "",
     businessStatus: (snail.businessStatus as string) || "",
   });
@@ -288,7 +288,7 @@ function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.formerAwardee} onChange={(e) => setF({ ...f, formerAwardee: e.target.checked })} className={checkboxClass} id="fa-edit" /><label htmlFor="fa-edit" className="text-sm text-gray-700">Former Awardee</label></div>
-        {f.formerAwardee && <div><label className={labelClass}>Year (First) Awarded</label><input type="number" value={f.yearAwarded} onChange={(e) => setF({ ...f, yearAwarded: e.target.value })} className={inputClass} /></div>}
+        {f.formerAwardee && <div><label className={labelClass}>Year First Awarded</label><input type="number" value={f.yearFirstAwarded} onChange={(e) => setF({ ...f, yearFirstAwarded: e.target.value })} className={inputClass} placeholder="Unknown" /><p className="mt-1 text-xs text-gray-500">Leave blank if the year isn&apos;t known.</p></div>}
         <div><label className={labelClass}>Source</label><input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option>{businessStatuses.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
       </div>
@@ -319,7 +319,7 @@ function LinksEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { sn
 
 /* ── contacts section (its own CRUD against /api/admin/snails/[id]/contacts) ── */
 
-const emptyContactForm = { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false };
+const emptyContactForm = { name: "", roles: [] as string[], email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: false };
 type ContactFormState = typeof emptyContactForm;
 
 /** Editor state for an existing contact. Re-derived every time the editor opens so
@@ -327,7 +327,7 @@ type ContactFormState = typeof emptyContactForm;
 function contactForm(c: ContactData): ContactFormState {
   return {
     name: c.name,
-    role: c.role,
+    roles: c.roles,
     email: c.email || "",
     phone: c.phone || "",
     phoneVanity: c.phoneVanity || "",
@@ -341,10 +341,21 @@ function ContactFields({ f, setF }: { f: ContactFormState; setF: (f: ContactForm
     <div className="grid gap-3 sm:grid-cols-2">
       <div><label className={labelClass}>Name *</label><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={inputClass} /></div>
       <div>
-        <label className={labelClass}>Role</label>
-        <select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} className={`${inputClass} bg-white`}>
-          {contactRoles.map((r) => (<option key={r.value} value={r.value}>{r.label}</option>))}
-        </select>
+        <label className={labelClass}>Roles</label>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {contactRoles.map((r) => (
+            <label key={r.value} className="flex items-center gap-1.5 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={f.roles.includes(r.value)}
+                onChange={() => setF({ ...f, roles: f.roles.includes(r.value) ? f.roles.filter((v) => v !== r.value) : [...f.roles, r.value] })}
+                className={checkboxClass}
+              />
+              {r.label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-gray-500">Pick every role that applies. Leave blank if not known.</p>
       </div>
       <div><label className={labelClass}>Email</label><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputClass} /></div>
       <div><label className={labelClass}>Phone</label><input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputClass} /></div>
@@ -452,7 +463,7 @@ function ContactRow({ contact, snailId, onList }: {
         <div>
         <p className="text-sm font-medium text-gray-900">
           {contact.name}
-          <span className="ml-2 text-xs font-normal text-gray-500">{contactRoleLabel(contact.role)}</span>
+          {contact.roles.length > 0 && <span className="ml-2 text-xs font-normal text-gray-500">{contactRolesLabel(contact.roles)}</span>}
           {contact.isPublic && <span className="ml-2 text-xs font-normal text-green-700">Public</span>}
         </p>
         <p className="text-xs text-gray-600 mt-0.5">
@@ -1044,7 +1055,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       {/* History */}
       <DetailSection title="History" snailId={snail.id} EditForm={(props) => <HistoryEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
-          {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
+          {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" /><Field label="Year First Awarded" value={snail.yearFirstAwarded ? String(snail.yearFirstAwarded) : "Unknown"} /></>}
           <Field label="Source" value={snail.source as string} />
           <Field label="Business Status" value={businessStatusLabel(snail.businessStatus as string | null)} />
         </dl>

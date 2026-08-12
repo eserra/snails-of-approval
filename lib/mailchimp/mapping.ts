@@ -1,4 +1,3 @@
-import { contactRoleLabel } from "@/lib/contact-roles";
 
 export { cleanEmail } from "@/lib/email";
 
@@ -11,13 +10,13 @@ export { cleanEmail } from "@/lib/email";
 export type ContactForSync = {
   name: string;
   email: string | null;
-  role: string;
+  roles: string[];
   snail: {
     name: string;
     track: string;
     stage: string | null;
     businessStatus: string | null;
-    yearAwarded: number | null;
+    yearFirstAwarded: number | null;
     chapter: { name: string } | null;
     category: { name: string } | null;
   };
@@ -36,7 +35,7 @@ export function buildMemberBody(
   const { snail } = contact;
   const merge: Record<string, string | number> = {
     FNAME: contact.name,
-    ROLE: contactRoleLabel(contact.role),
+    ROLE: contact.roles.join(", "),
     SNAIL: snail.name,
     TRACK: snail.track,
     STAGE: snail.stage ?? "",
@@ -45,7 +44,7 @@ export function buildMemberBody(
     CATEGORY: snail.category?.name ?? "",
   };
   // Number merge field: send it only when set — Mailchimp rejects "" for a number.
-  if (snail.yearAwarded != null) merge.YEARAWARD = snail.yearAwarded;
+  if (snail.yearFirstAwarded != null) merge.YEARAWARD = snail.yearFirstAwarded;
 
   return {
     email_address: email,

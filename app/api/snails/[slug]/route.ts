@@ -15,7 +15,7 @@ export async function GET(
       contacts: {
         where: { isPublic: true },
         orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, role: true, email: true, phone: true },
+        select: { id: true, name: true, roles: true, email: true, phone: true },
       },
     },
   });

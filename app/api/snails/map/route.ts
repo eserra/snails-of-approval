@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const snail: Prisma.SnailWhereInput = { status: "published" };
   if (chapter) snail.chapter = { slug: chapter };
   if (category) snail.category = { slug: category };
-  if (year) snail.yearAwarded = parseInt(year);
+  if (year) snail.yearFirstAwarded = parseInt(year);
 
   const where: Prisma.LocationWhereInput = {
     isPublic: true,
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         select: {
           slug: true,
           name: true,
-          yearAwarded: true,
+          yearFirstAwarded: true,
           category: { select: { name: true, slug: true } },
           chapter: { select: { name: true, slug: true } },
         },
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       isPrimary: l.isPrimary,
       slug: l.snail.slug,
       name: l.snail.name,
-      yearAwarded: l.snail.yearAwarded,
+      yearFirstAwarded: l.snail.yearFirstAwarded,
       category: l.snail.category,
       chapter: l.snail.chapter,
     }))
