@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { stageLabel } from "@/lib/pipeline-stages";
 import SnailIcon from "@/components/SnailIcon";
 import CheckInModal from "@/components/CheckInModal";
+import { stagesForTab } from "@/lib/snail-filters";
 
 // Small stroke icons so the action bar signals direction at a glance: a download
 // arrow for the local export, a refresh loop for the inbound SFUSA check, an
@@ -82,10 +83,16 @@ const stageBadge: Record<string, string> = {
 
 // The list, its tab-count badges, and the export all share one filter contract,
 // enforced server-side (lib/snail-filters.ts). The client just names the view.
-function filterQuery(tab: Tab, mineOnly: boolean, notOnMapOnly: boolean) {
+function filterQuery(
+  tab: Tab,
+  mineOnly: boolean,
+  notOnMapOnly: boolean,
+  stage: string | null
+) {
   const params = new URLSearchParams({ tab });
   if (mineOnly) params.set("mine", "1");
   if (notOnMapOnly) params.set("notOnMap", "1");
+  if (stage) params.set("stage", stage);
   return params.toString();
 }
 
@@ -97,8 +104,11 @@ export default function AdminSnailsPage() {
     lapsed: 0,
     all: 0,
   });
+  const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("leads");
+  // One stage within the tab, or null for all of them.
+  const [stage, setStage] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
   const [notOnMapOnly, setNotOnMapOnly] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -131,11 +141,14 @@ export default function AdminSnailsPage() {
 
   function loadSnails() {
     setLoading(true);
-    return fetch(`/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly)}`)
+    return fetch(
+      `/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly, stage)}`
+    )
       .then((r) => r.json())
       .then((data) => {
         setSnails(data.snails);
         setCounts(data.counts);
+        setStageCounts(data.stageCounts ?? {});
         setLoading(false);
       });
   }
@@ -144,7 +157,7 @@ export default function AdminSnailsPage() {
   useEffect(() => {
     loadSnails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, mineOnly, notOnMapOnly]);
+  }, [tab, mineOnly, notOnMapOnly, stage]);
 
   async function handleSyncMap() {
     setSyncing(true);
@@ -177,7 +190,7 @@ export default function AdminSnailsPage() {
     setSyncResult(null);
     try {
       const res = await fetch(
-        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly)}`
+        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly, stage)}`
       );
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -220,6 +233,8 @@ export default function AdminSnailsPage() {
     // Refetch so the table and the tab counts both reflect the deletion.
     await loadSnails();
   }
+
+  const stageStages = stagesForTab(tab);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "leads", label: "Leads" },
@@ -313,13 +328,18 @@ export default function AdminSnailsPage() {
         <MailchimpReport report={mcReport} onClose={() => setMcReport(null)} />
       )}
 
-      {/* Tabs + My Snails toggle */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Tabs + toggles, with the stage filter on a second row beneath them */}
+      <div className="flex flex-col gap-3 mb-6">
+      <div className="flex items-center gap-4 flex-wrap">
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key);
+              // A stage from the old tab would filter the new one to nothing.
+              setStage(null);
+            }}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               tab === t.key
                 ? "bg-white text-gray-900 shadow-sm"
@@ -359,6 +379,50 @@ export default function AdminSnailsPage() {
       </label>
       </div>
 
+      {/* Stage filter — only the tabs that map to a funnel get one. "Lapsed" is
+          already a single stage and "All" spans both funnels. */}
+      {stageStages.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by stage">
+          <button
+            type="button"
+            onClick={() => setStage(null)}
+            aria-pressed={stage === null}
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              stage === null
+                ? "bg-amber-700 text-white"
+                : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            All stages
+          </button>
+          {stageStages.map((value) => {
+            const count = stageCounts[value] ?? 0;
+            const selected = stage === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStage(selected ? null : value)}
+                aria-pressed={selected}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  selected
+                    ? "bg-amber-700 text-white"
+                    : count === 0
+                      ? "bg-white text-gray-400 ring-1 ring-gray-200 hover:bg-gray-50"
+                      : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {stageLabel(value)}
+                <span className={`ml-1.5 ${selected ? "text-amber-100" : "text-gray-400"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      </div>
+
       {loading ? (
         <p className="text-gray-500">Loading...</p>
       ) : snails.length === 0 ? (
@@ -367,11 +431,15 @@ export default function AdminSnailsPage() {
             <SnailIcon size={48} />
           </div>
           <p className="text-gray-500">
+            {/* Name the stage when one is selected, so an empty table reads as
+                "nothing at this stage" rather than "nothing in this tab". */}
             {mineOnly
               ? "No snails assigned to you in this view."
-              : tab === "all"
-                ? "No snails yet. Create your first one!"
-                : `No ${tab} snails.`}
+              : stage
+                ? `No ${tab} at ${stageLabel(stage)}.`
+                : tab === "all"
+                  ? "No snails yet. Create your first one!"
+                  : `No ${tab} snails.`}
           </p>
         </div>
       ) : (
