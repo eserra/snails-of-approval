@@ -7,6 +7,11 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // Redirects to the Slow Food USA submission form, prefilled with this snail's data.
 // Protected by middleware (admin/editor). Meant to be opened in a new tab.
+//
+// Active awardees only. The national map lists businesses that hold a Snail, so
+// submitting a lead would list one that hasn't been approved. The detail page
+// hides the link for leads, but that's presentation — the check belongs here too,
+// since the URL is guessable and opening it is a one-click submission.
 export async function GET(_request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const snail = await prisma.snail.findUnique({
@@ -20,6 +25,16 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   });
   if (!snail) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (snail.track !== "active") {
+    return NextResponse.json(
+      {
+        error:
+          "Only active awardees can be submitted to Slow Food USA. This snail is still a lead — record the board's approval first.",
+      },
+      { status: 400 }
+    );
   }
 
   // Business phone/email come from the main contact, falling back to the first
