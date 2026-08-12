@@ -9,25 +9,38 @@ import {
   isValidInstagramHandle,
   normalizeInstagramHandle,
 } from "@/lib/instagram";
-import { parseTab, snailListWhere, tabWhere } from "@/lib/snail-filters";
+import {
+  parseStage,
+  parseTab,
+  snailListWhere,
+  stagesForTab,
+  tabWhere,
+} from "@/lib/snail-filters";
 import { sanitizeRoles } from "@/lib/contact-roles";
 
-// GET /api/admin/snails?tab=&mine=&notOnMap= — the admin Snails table plus the
-// tab-count badges, filtered server-side so the export can share the exact same
-// rules (see lib/snail-filters.ts). The counts are over the whole dataset per
-// tab (independent of the toggles), matching how the badges have always read.
+// GET /api/admin/snails?tab=&mine=&notOnMap=&stage= — the admin Snails table plus
+// the count badges, filtered server-side so the export can share the exact same
+// rules (see lib/snail-filters.ts).
+//
+// Two sets of counts, deliberately on different rules. The tab counts are over
+// the whole dataset, independent of every toggle, matching how those badges have
+// always read. The per-stage counts are a drill-down *within* the current view,
+// so they do respect the toggles — "my leads, by stage" is the question the stage
+// bar exists to answer — and they ignore the selected stage, or picking one would
+// zero out every other chip.
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
     const tab = parseTab(params.get("tab"));
     const mine = params.get("mine") === "1";
     const notOnMap = params.get("notOnMap") === "1";
+    const stage = parseStage(tab, params.get("stage"));
     const token = await getToken({ req: request });
     const userId = token?.sub ? parseInt(token.sub) : null;
 
-    const [snails, leads, active, lapsed, all] = await Promise.all([
+    const [snails, leads, active, lapsed, all, byStage] = await Promise.all([
       prisma.snail.findMany({
-        where: snailListWhere({ tab, mine, notOnMap, userId }),
+        where: snailListWhere({ tab, mine, notOnMap, stage, userId }),
         orderBy: { name: "asc" },
         include: {
           chapter: { select: { name: true } },
@@ -39,9 +52,28 @@ export async function GET(request: NextRequest) {
       prisma.snail.count({ where: tabWhere("active") }),
       prisma.snail.count({ where: tabWhere("lapsed") }),
       prisma.snail.count(),
+      prisma.snail.groupBy({
+        by: ["stage"],
+        where: snailListWhere({ tab, mine, notOnMap, userId }),
+        _count: { _all: true },
+      }),
     ]);
 
-    return NextResponse.json({ snails, counts: { leads, active, lapsed, all } });
+    // Every stage the tab offers gets an entry, including the empty ones: a chip
+    // reading 0 says "nobody is at Applied", which is worth knowing, and a chip
+    // that vanishes when its last snail moves on makes the bar jump around.
+    const tallied = new Map(
+      byStage.map((row) => [row.stage, row._count._all])
+    );
+    const stageCounts = Object.fromEntries(
+      stagesForTab(tab).map((s) => [s, tallied.get(s) ?? 0])
+    );
+
+    return NextResponse.json({
+      snails,
+      counts: { leads, active, lapsed, all },
+      stageCounts,
+    });
   } catch (error) {
     console.error("Failed to fetch snails:", error);
     return NextResponse.json({ error: "Failed to fetch snails" }, { status: 500 });
