@@ -237,19 +237,26 @@ async function main() {
       }
     }
 
-    // Fold the spreadsheet's single contact into a "general" contact row.
-    // Re-run safe: only create if this snail has no general contact yet.
+    // Fold the spreadsheet's single contact into a contact row.
+    //
+    // Re-run safe by identity, not by role: the sheet doesn't say whether this
+    // person is an owner or a chef, so the row is created with no roles for a
+    // human to fill in — which means "has no roles yet" can't be the dedupe key
+    // (it would match every unfilled contact). Match on email where there is
+    // one, else on name.
     if (contactName || email) {
       const snail = await prisma.snail.findUnique({ where: { slug } });
       if (snail) {
         const existingContact = await prisma.contact.findFirst({
-          where: { snailId: snail.id, role: "general" },
+          where: email
+            ? { snailId: snail.id, email }
+            : { snailId: snail.id, name: contactName || name },
         });
         if (!existingContact) {
           await prisma.contact.create({
             data: {
               name: contactName || name,
-              role: "general",
+              roles: [],
               email,
               isPublic: true,
               isPrimary: true,

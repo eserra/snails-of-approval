@@ -50,7 +50,7 @@ export async function syncContacts(): Promise<SyncResult> {
     select: {
       name: true,
       email: true,
-      role: true,
+      roles: true,
       snail: {
         select: {
           name: true,

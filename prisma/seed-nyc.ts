@@ -130,7 +130,7 @@ async function main() {
           create: [
             {
               name: snail.name,
-              role: "general",
+              roles: [],
               email,
               phone,
               isPublic: true,

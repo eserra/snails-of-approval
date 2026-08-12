@@ -126,7 +126,15 @@ model Snail {
 model Contact {
   id          Int      @id @default(autoincrement())
   name        String
-  role        String   @default("general") // owner, manager, chef, pr_media, general
+  // A contact can hold several roles at once — a chef who is also the owner is
+  // one person, not two contacts. Machine-readable values, never display
+  // labels: they're written straight into the Mailchimp ROLE merge field that
+  // segments key off. Vocabulary lives in lib/contact-roles.ts.
+  //
+  // Empty means the roles aren't known yet, which is why there's no "general"
+  // catch-all: an empty list says that honestly instead of filing everyone
+  // under a category that segments can't use.
+  roles       String[] @default([])
   email       String?
   phone       String?
   phoneVanity String?  @map("phone_vanity")

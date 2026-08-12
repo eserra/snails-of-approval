@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { contactRoleLabel } from "@/lib/contact-roles";
+import { contactRolesLabel } from "@/lib/contact-roles";
 import { locationKindLabel } from "@/lib/location-kinds";
 import { instagramUrlFromHandle } from "@/lib/instagram";
 
@@ -32,7 +32,7 @@ export default async function SnailDetailPage({ params }: Props) {
       contacts: {
         where: { isPublic: true },
         orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, role: true, email: true, phone: true },
+        select: { id: true, name: true, roles: true, email: true, phone: true },
       },
       locations: {
         where: { isPublic: true },
@@ -98,9 +98,11 @@ export default async function SnailDetailPage({ params }: Props) {
             <div key={contact.id} className="text-sm text-gray-600">
               <p className="font-medium text-gray-900">
                 {contact.name}
-                <span className="ml-2 text-xs font-normal text-gray-500">
-                  {contactRoleLabel(contact.role)}
-                </span>
+                {contact.roles.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-gray-500">
+                    {contactRolesLabel(contact.roles)}
+                  </span>
+                )}
               </p>
               {contact.phone && (
                 <a href={`tel:${contact.phone}`} className="text-amber-700">

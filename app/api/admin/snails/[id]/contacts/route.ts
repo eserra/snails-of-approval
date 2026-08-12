@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireWrite } from "@/lib/rbac";
 import { listContacts } from "@/lib/snail-relations";
 import { isValidEmail } from "@/lib/email";
+import { sanitizeRoles } from "@/lib/contact-roles";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return tx.contact.create({
       data: {
         name: body.name.trim(),
-        role: body.role || "general",
+        roles: sanitizeRoles(body.roles),
         email: body.email || null,
         phone: body.phone || null,
         phoneVanity: body.phoneVanity || null,

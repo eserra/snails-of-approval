@@ -46,7 +46,7 @@ type AttachmentData = {
 
 type ContactInput = {
   name: string;
-  role: string;
+  roles: string[];
   email: string;
   phone: string;
   phoneVanity: string;
@@ -204,8 +204,25 @@ export default function SnailForm({
       contacts: [
         ...prev.contacts,
         // The first contact added is the main one by default.
-        { name: "", role: "general", email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: prev.contacts.length === 0 },
+        { name: "", roles: [], email: "", phone: "", phoneVanity: "", isPublic: false, isPrimary: prev.contacts.length === 0 },
       ],
+    }));
+  }
+
+  /** Toggle one role on a contact; a contact may hold several at once. */
+  function toggleContactRole(index: number, role: string) {
+    setForm((prev) => ({
+      ...prev,
+      contacts: prev.contacts.map((c, i) =>
+        i === index
+          ? {
+              ...c,
+              roles: c.roles.includes(role)
+                ? c.roles.filter((r) => r !== role)
+                : [...c.roles, role],
+            }
+          : c
+      ),
     }));
   }
 
@@ -579,18 +596,26 @@ export default function SnailForm({
                 />
               </div>
               <div>
-                <label className={labelClass}>Role</label>
-                <select
-                  value={contact.role}
-                  onChange={(e) => updateContact(i, "role", e.target.value)}
-                  className={`${inputClass} bg-white`}
-                >
+                <label className={labelClass}>Roles</label>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {contactRoles.map((r) => (
-                    <option key={r.value} value={r.value}>
+                    <label
+                      key={r.value}
+                      className="flex items-center gap-1.5 text-sm text-gray-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={contact.roles.includes(r.value)}
+                        onChange={() => toggleContactRole(i, r.value)}
+                        className={checkboxClass}
+                      />
                       {r.label}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Pick every role that applies. Leave blank if not known.
+                </p>
               </div>
               <div>
                 <label className={labelClass}>Email</label>

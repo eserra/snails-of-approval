@@ -10,6 +10,7 @@ import {
   normalizeInstagramHandle,
 } from "@/lib/instagram";
 import { parseTab, snailListWhere, tabWhere } from "@/lib/snail-filters";
+import { sanitizeRoles } from "@/lib/contact-roles";
 
 // GET /api/admin/snails?tab=&mine=&notOnMap= — the admin Snails table plus the
 // tab-count badges, filtered server-side so the export can share the exact same
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
         .map(
           (c: {
             name: string;
-            role?: string;
+            roles?: string[];
             email?: string;
             phone?: string;
             phoneVanity?: string;
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
             if (isPrimary) primaryTaken = true;
             return {
               name: c.name.trim(),
-              role: c.role || "general",
+              roles: sanitizeRoles(c.roles),
               email: c.email || null,
               phone: c.phone || null,
               phoneVanity: c.phoneVanity || null,

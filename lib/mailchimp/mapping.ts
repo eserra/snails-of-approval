@@ -1,4 +1,3 @@
-import { contactRoleLabel } from "@/lib/contact-roles";
 
 export { cleanEmail } from "@/lib/email";
 
@@ -11,7 +10,7 @@ export { cleanEmail } from "@/lib/email";
 export type ContactForSync = {
   name: string;
   email: string | null;
-  role: string;
+  roles: string[];
   snail: {
     name: string;
     track: string;
@@ -36,7 +35,7 @@ export function buildMemberBody(
   const { snail } = contact;
   const merge: Record<string, string | number> = {
     FNAME: contact.name,
-    ROLE: contactRoleLabel(contact.role),
+    ROLE: contact.roles.join(", "),
     SNAIL: snail.name,
     TRACK: snail.track,
     STAGE: snail.stage ?? "",
