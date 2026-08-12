@@ -9,7 +9,10 @@ type Ctx = { params: Promise<{ id: string }> };
  * Records the board decision fork out of the "board_review" stage:
  *  - approved → moves the snail onto the active track (Onboarding)
  *  - rejected → moves to the "deferred" side-track (reapply later) + logs a note
- *  - reopen   → returns a Deferred snail to the lead funnel to reapply
+ *
+ * Getting back out of "deferred" is not a board decision, so it isn't here: the
+ * pipeline bar re-enters the snail at any stage, which also leaves boardDecision
+ * intact — the board did vote, and erasing that lost real history.
  */
 export async function POST(request: NextRequest, { params }: Ctx) {
   const forbidden = await requireWrite(request);
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const snailId = parseInt(id);
   const body = await request.json();
-  const outcome = body.outcome as "approved" | "rejected" | "reopen";
+  const outcome = body.outcome as "approved" | "rejected";
 
   const snail = await prisma.snail.findUnique({ where: { id: snailId } });
   if (!snail) {
@@ -83,20 +86,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
               },
             }
           : {}),
-      },
-    });
-    return NextResponse.json(updated);
-  }
-
-  if (outcome === "reopen") {
-    const updated = await prisma.snail.update({
-      where: { id: snailId },
-      data: {
-        track: "lead",
-        stage: body.stage || "contacted",
-        boardDecision: null,
-        boardDecisionDate: null,
-        lastTouchDate: now,
       },
     });
     return NextResponse.json(updated);

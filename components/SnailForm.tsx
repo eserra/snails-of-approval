@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import AddressAutocomplete from "./AddressAutocomplete";
 import FileUpload from "./FileUpload";
 import { validateStageChange } from "@/lib/stage-requirements";
-import { stageLabel } from "@/lib/pipeline-stages";
+import { stagesForTrack } from "@/lib/pipeline-stages";
 import { attachmentConfig } from "@/lib/attachment-config";
 import { diversityTags, parseDiversityTags, serializeDiversityTags } from "@/lib/diversity-tags";
 import { contactRoles } from "@/lib/contact-roles";
@@ -134,11 +134,12 @@ const emptySnail: SnailData = {
   diversityTags: "",
 };
 
-// Which stages each role may set directly. Editors get the two they routinely
-// move a lead through; everything else goes via the pipeline bar.
-const leadStageOptions = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "blocked"];
-const editorLeadStageOptions = ["new", "applied"];
-const activeStageOptions = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
+// Creating a snail is data entry, not pipeline movement: a snail being entered
+// from historical records is already wherever it already is, so any stage on the
+// chosen track is fair game and there's no role restriction. Moving it after
+// that goes through the pipeline bar, which is the only thing that governs
+// transitions. Options come from lib/pipeline-stages so this can't drift into a
+// third vocabulary of its own.
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none";
@@ -148,15 +149,12 @@ const checkboxClass =
 
 export default function SnailForm({
   snail,
-  userRole,
   userId,
 }: {
   snail?: SnailData;
-  userRole?: string;
   userId?: string;
 }) {
   const router = useRouter();
-  const isAdmin = userRole === "admin";
   const defaults = snail || {
     ...emptySnail,
     assigneeId: userId || "",
@@ -891,7 +889,7 @@ export default function SnailForm({
               className={`${inputClass} bg-white`}
             >
               <option value="lead">Lead</option>
-              {isAdmin && <option value="active">Active</option>}
+              <option value="active">Active</option>
             </select>
           </div>
 
@@ -909,14 +907,9 @@ export default function SnailForm({
               }}
               className={`${inputClass} bg-white`}
             >
-              {(form.track === "lead"
-                ? isAdmin
-                  ? leadStageOptions
-                  : editorLeadStageOptions
-                : activeStageOptions
-              ).map((value) => (
-                <option key={value} value={value}>
-                  {stageLabel(value)}
+              {stagesForTrack(form.track).map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
                 </option>
               ))}
             </select>
