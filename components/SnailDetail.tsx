@@ -280,7 +280,7 @@ function RecommendationEditForm({ onSave, onCancel, saving, snail }: EditFormPro
 function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
     formerAwardee: snail.formerAwardee,
-    yearAwarded: snail.yearAwarded != null ? String(snail.yearAwarded) : "",
+    yearFirstAwarded: snail.yearFirstAwarded != null ? String(snail.yearFirstAwarded) : "",
     source: (snail.source as string) || "",
     businessStatus: (snail.businessStatus as string) || "",
   });
@@ -288,7 +288,7 @@ function HistoryEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { 
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex items-center gap-2"><input type="checkbox" checked={f.formerAwardee} onChange={(e) => setF({ ...f, formerAwardee: e.target.checked })} className={checkboxClass} id="fa-edit" /><label htmlFor="fa-edit" className="text-sm text-gray-700">Former Awardee</label></div>
-        {f.formerAwardee && <div><label className={labelClass}>Year (First) Awarded</label><input type="number" value={f.yearAwarded} onChange={(e) => setF({ ...f, yearAwarded: e.target.value })} className={inputClass} /></div>}
+        {f.formerAwardee && <div><label className={labelClass}>Year First Awarded</label><input type="number" value={f.yearFirstAwarded} onChange={(e) => setF({ ...f, yearFirstAwarded: e.target.value })} className={inputClass} placeholder="Unknown" /><p className="mt-1 text-xs text-gray-500">Leave blank if the year isn&apos;t known.</p></div>}
         <div><label className={labelClass}>Source</label><input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} className={inputClass} /></div>
         <div><label className={labelClass}>Business Status</label><select value={f.businessStatus} onChange={(e) => setF({ ...f, businessStatus: e.target.value })} className={`${inputClass} bg-white`}><option value="">Select...</option>{businessStatuses.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}</select></div>
       </div>
@@ -1044,7 +1044,7 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       {/* History */}
       <DetailSection title="History" snailId={snail.id} EditForm={(props) => <HistoryEditForm {...props} snail={snail} />}>
         <dl className="grid gap-2 sm:grid-cols-2">
-          {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" />{snail.yearAwarded && <Field label="Year (First) Awarded" value={String(snail.yearAwarded)} />}</>}
+          {snail.formerAwardee && <><Field label="Former Awardee" value="Yes" /><Field label="Year First Awarded" value={snail.yearFirstAwarded ? String(snail.yearFirstAwarded) : "Unknown"} /></>}
           <Field label="Source" value={snail.source as string} />
           <Field label="Business Status" value={businessStatusLabel(snail.businessStatus as string | null)} />
         </dl>

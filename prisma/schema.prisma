@@ -16,10 +16,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
 
   snails              Snail[]
-  assignedSnails      Snail[]      @relation("assignedSnails")
-  authoredNotes       Note[]       @relation("authoredNotes")
-  authoredCheckIns    CheckIn[]    @relation("authoredCheckIns")
-  uploadedAttachments Attachment[] @relation("uploadedAttachments")
+  assignedSnails      Snail[]       @relation("assignedSnails")
+  authoredNotes       Note[]        @relation("authoredNotes")
+  authoredCheckIns    CheckIn[]     @relation("authoredCheckIns")
+  uploadedAttachments Attachment[]  @relation("uploadedAttachments")
   gmailAccount        GmailAccount?
 
   @@map("users")
@@ -53,19 +53,23 @@ model Category {
 }
 
 model Snail {
-  id           Int      @id @default(autoincrement())
-  slug         String   @unique
-  name         String
-  yearAwarded  Int?     @map("year_awarded")
-  description  String?  @db.Text
-  website      String?
-  facebookUrl  String?  @map("facebook_url")
-  instagramHandle String? @map("instagram_handle")
-  otherSocial  String?  @map("other_social")
-  photoUrl     String?  @map("photo_url")
-  status       String   @default("draft") // draft, published
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id               Int      @id @default(autoincrement())
+  slug             String   @unique
+  name             String
+  // The year this business first held a Snail of Approval. Hand-entered from
+  // historical records; null means the year isn't known, which is a legitimate
+  // answer for old awardees rather than missing data. Nothing is computed from
+  // it — the certification/recertification clock is a separate concern.
+  yearFirstAwarded Int?     @map("year_first_awarded")
+  description      String?  @db.Text
+  website          String?
+  facebookUrl      String?  @map("facebook_url")
+  instagramHandle  String?  @map("instagram_handle")
+  otherSocial      String?  @map("other_social")
+  photoUrl         String?  @map("photo_url")
+  status           String   @default("draft") // draft, published
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   // CRM Pipeline
   track          String  @default("lead") @map("track")
@@ -76,7 +80,7 @@ model Snail {
   blockedReason  String? @map("blocked_reason")
 
   // Board decision (SOA team recommendation → board vote)
-  recommendation    String?   @db.Text  @map("recommendation")
+  recommendation    String?   @map("recommendation") @db.Text
   boardDecision     String?   @map("board_decision") // approved | rejected
   boardDecisionDate DateTime? @map("board_decision_date")
 
@@ -90,25 +94,25 @@ model Snail {
   establishmentType String? @map("establishment_type")
 
   // CRM tracking
-  assigneeId        Int?      @map("assignee_id")
-  lastTouchDate     DateTime? @map("last_touch_date")
-  welcomeLetterSent Boolean   @default(false) @map("welcome_letter_sent")
-  stickersDelivered Boolean   @default(false) @map("stickers_delivered")
-  digitalAssetsSent Boolean   @default(false) @map("digital_assets_sent")
-  certificateSent   Boolean   @default(false) @map("certificate_sent")
+  assigneeId               Int?      @map("assignee_id")
+  lastTouchDate            DateTime? @map("last_touch_date")
+  welcomeLetterSent        Boolean   @default(false) @map("welcome_letter_sent")
+  stickersDelivered        Boolean   @default(false) @map("stickers_delivered")
+  digitalAssetsSent        Boolean   @default(false) @map("digital_assets_sent")
+  certificateSent          Boolean   @default(false) @map("certificate_sent")
   certificateRequestedDate DateTime? @map("certificate_requested_date")
-  pressReleaseSent  Boolean   @default(false) @map("press_release_sent")
-  socialAnnounced   Boolean   @default(false) @map("social_announced")
-  diversityTags     String?   @map("diversity_tags")
+  pressReleaseSent         Boolean   @default(false) @map("press_release_sent")
+  socialAnnounced          Boolean   @default(false) @map("social_announced")
+  diversityTags            String?   @map("diversity_tags")
 
   // Relations
-  categoryId  Int?      @map("category_id")
-  category    Category? @relation(fields: [categoryId], references: [id])
-  chapterId   Int       @map("chapter_id")
-  chapter     Chapter   @relation(fields: [chapterId], references: [id])
-  createdById Int?      @map("created_by_id")
-  createdBy   User?     @relation(fields: [createdById], references: [id])
-  assignee    User?     @relation("assignedSnails", fields: [assigneeId], references: [id])
+  categoryId  Int?         @map("category_id")
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  chapterId   Int          @map("chapter_id")
+  chapter     Chapter      @relation(fields: [chapterId], references: [id])
+  createdById Int?         @map("created_by_id")
+  createdBy   User?        @relation(fields: [createdById], references: [id])
+  assignee    User?        @relation("assignedSnails", fields: [assigneeId], references: [id])
   contacts    Contact[]
   locations   Location[]
   notes       Note[]
@@ -120,7 +124,7 @@ model Snail {
 }
 
 model Contact {
-  id        Int      @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   role        String   @default("general") // owner, manager, chef, pr_media, general
   email       String?
@@ -129,7 +133,7 @@ model Contact {
   isPublic    Boolean  @default(false) @map("is_public")
   isPrimary   Boolean  @default(false) @map("is_primary")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   snailId Int   @map("snail_id")
   snail   Snail @relation(fields: [snailId], references: [id], onDelete: Cascade)
@@ -176,10 +180,10 @@ model Note {
 
 model CheckIn {
   id        Int      @id @default(autoincrement())
-  visitedAt DateTime @map("visited_at")   // date of the visit / engagement
-  partySize Int      @map("party_size")   // number of people present
-  occasion  String?                       // optional — what the occasion was
-  amount    Decimal? @db.Decimal(10, 2)   // optional — $ spent at the snail
+  visitedAt DateTime @map("visited_at") // date of the visit / engagement
+  partySize Int      @map("party_size") // number of people present
+  occasion  String? // optional — what the occasion was
+  amount    Decimal? @db.Decimal(10, 2) // optional — $ spent at the snail
   notes     String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -213,8 +217,8 @@ model Attachment {
 model GmailAccount {
   id           Int      @id @default(autoincrement())
   emailAddress String   @map("email_address")
-  accessToken  String   @db.Text @map("access_token")
-  refreshToken String   @db.Text @map("refresh_token")
+  accessToken  String   @map("access_token") @db.Text
+  refreshToken String   @map("refresh_token") @db.Text
   tokenExpiry  DateTime @map("token_expiry")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

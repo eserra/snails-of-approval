@@ -18,7 +18,7 @@ type MapLocation = {
   isPrimary: boolean;
   slug: string;
   name: string;
-  yearAwarded: number;
+  yearFirstAwarded: number | null;
   category: { name: string; slug: string } | null;
   chapter: { name: string; slug: string };
 };

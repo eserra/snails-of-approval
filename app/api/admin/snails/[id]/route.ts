@@ -81,8 +81,8 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   set("track", body.track || "lead");
   set("stage", body.stage || null);
 
-  if ("yearAwarded" in body)
-    data.yearAwarded = body.yearAwarded ? parseInt(body.yearAwarded) : null;
+  if ("yearFirstAwarded" in body)
+    data.yearFirstAwarded = body.yearFirstAwarded ? parseInt(body.yearFirstAwarded) : null;
   if ("categoryId" in body)
     data.categoryId = body.categoryId ? parseInt(body.categoryId) : null;
   if ("chapterId" in body) data.chapterId = parseInt(body.chapterId);

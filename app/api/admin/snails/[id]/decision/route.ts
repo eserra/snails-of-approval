@@ -45,7 +45,10 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         boardDecisionDate: now,
         lastTouchDate: now,
         recommendation,
-        yearAwarded: snail.yearAwarded ?? now.getFullYear(),
+        // yearFirstAwarded is deliberately not set here. It records the year the
+        // business *first* held a Snail, which an approval today doesn't
+        // establish — a recertification is also an approval. The date of this
+        // decision is already on boardDecisionDate.
       },
     });
     return NextResponse.json(updated);

@@ -143,7 +143,13 @@ async function main() {
     const address = str(row["Street Address"]);
 
     // Parse numeric fields
-    const yearAwarded = parseIntOrNull(row["Latest SOA Award Year"]);
+    //
+    // CAVEAT: the sheet has no first-award column — only "Latest SOA Award
+    // Year" — so this is a proxy for yearFirstAwarded and is wrong for any
+    // snail that has been renewed since it was first awarded. It's kept as the
+    // best available value; where the true first year isn't known, leaving
+    // yearFirstAwarded null is the honest answer.
+    const latestAwardYear = parseIntOrNull(row["Latest SOA Award Year"]);
     const zip = str(row["ZIP"])?.replace(/\.0$/, "") || null;
 
     // Parse date
@@ -173,7 +179,7 @@ async function main() {
     // Upsert snail
     const data = {
       name,
-      yearAwarded,
+      yearFirstAwarded: latestAwardYear,
       description,
       website,
       instagramHandle,

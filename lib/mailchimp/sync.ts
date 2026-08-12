@@ -57,7 +57,7 @@ export async function syncContacts(): Promise<SyncResult> {
           track: true,
           stage: true,
           businessStatus: true,
-          yearAwarded: true,
+          yearFirstAwarded: true,
           chapter: { select: { name: true } },
           category: { select: { name: true } },
         },

@@ -18,7 +18,9 @@ export const MERGE_FIELDS: MergeFieldDef[] = [
   { tag: "STAGE", name: "Pipeline stage", type: "text" },
   { tag: "BIZSTATUS", name: "Business status", type: "text" },
   { tag: "CATEGORY", name: "Category", type: "text" },
-  { tag: "YEARAWARD", name: "Year awarded", type: "number" },
+  // Tag stays YEARAWARD: it's the external key ensureSchema matches on, and
+  // renaming it would orphan the audience's existing field and its segments.
+  { tag: "YEARAWARD", name: "Year first awarded", type: "number" },
 ];
 
 // A saved segment defined by conditions over merge fields. `match: "all"` ANDs

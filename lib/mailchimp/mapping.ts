@@ -17,7 +17,7 @@ export type ContactForSync = {
     track: string;
     stage: string | null;
     businessStatus: string | null;
-    yearAwarded: number | null;
+    yearFirstAwarded: number | null;
     chapter: { name: string } | null;
     category: { name: string } | null;
   };
@@ -45,7 +45,7 @@ export function buildMemberBody(
     CATEGORY: snail.category?.name ?? "",
   };
   // Number merge field: send it only when set — Mailchimp rejects "" for a number.
-  if (snail.yearAwarded != null) merge.YEARAWARD = snail.yearAwarded;
+  if (snail.yearFirstAwarded != null) merge.YEARAWARD = snail.yearFirstAwarded;
 
   return {
     email_address: email,

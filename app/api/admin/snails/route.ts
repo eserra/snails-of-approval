@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     data: {
       slug,
       name: body.name,
-      yearAwarded: body.yearAwarded ? parseInt(body.yearAwarded) : null,
+      yearFirstAwarded: body.yearFirstAwarded ? parseInt(body.yearFirstAwarded) : null,
       description: body.description || null,
       website: body.website || null,
       facebookUrl: body.facebookUrl || null,

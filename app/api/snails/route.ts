@@ -32,12 +32,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (year) {
-    where.yearAwarded = parseInt(year);
+    where.yearFirstAwarded = parseInt(year);
   }
 
   const orderBy: Prisma.SnailOrderByWithRelationInput =
     sort === "year"
-      ? { yearAwarded: "desc" }
+      // Nulls last: an unknown first-award year shouldn't outrank a known one,
+      // and Postgres would otherwise sort NULLs first on a DESC ordering.
+      ? { yearFirstAwarded: { sort: "desc", nulls: "last" } }
       : sort === "recent"
         ? { createdAt: "desc" }
         : { name: "asc" };

@@ -71,7 +71,7 @@ type LocationInput = {
 type SnailData = {
   id?: number;
   name: string;
-  yearAwarded: number | string;
+  yearFirstAwarded: number | string;
   description: string;
   contacts: ContactInput[];
   locations: LocationInput[];
@@ -104,7 +104,10 @@ type SnailData = {
 
 const emptySnail: SnailData = {
   name: "",
-  yearAwarded: new Date().getFullYear(),
+  // Blank, not the current year: the year a business first held a Snail is
+  // something we either know from its records or don't, and pre-filling it
+  // silently invented a year for every snail entered through this form.
+  yearFirstAwarded: "",
   description: "",
   contacts: [],
   locations: [],
@@ -928,13 +931,17 @@ export default function SnailForm({
           <div>
             {form.formerAwardee && (
               <>
-                <label className={labelClass}>Year (First) Awarded</label>
+                <label className={labelClass}>Year First Awarded</label>
                 <input
                   type="number"
-                  value={form.yearAwarded}
-                  onChange={(e) => update("yearAwarded", e.target.value)}
+                  value={form.yearFirstAwarded}
+                  onChange={(e) => update("yearFirstAwarded", e.target.value)}
                   className={inputClass}
+                  placeholder="Unknown"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Leave blank if the year isn&apos;t known.
+                </p>
               </>
             )}
           </div>

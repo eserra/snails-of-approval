@@ -56,7 +56,7 @@ const columns: { header: string; get: (s: ExportSnail) => Cell }[] = [
   { header: "Name", get: (s) => s.name },
   { header: "Slug", get: (s) => s.slug },
   { header: "Status", get: (s) => s.status },
-  { header: "Year Awarded", get: (s) => s.yearAwarded ?? "" },
+  { header: "Year First Awarded", get: (s) => s.yearFirstAwarded ?? "" },
   { header: "Chapter", get: (s) => s.chapter.name },
   { header: "Category", get: categoryLabel },
   { header: "Website", get: (s) => s.website ?? "" },

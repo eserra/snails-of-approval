@@ -56,9 +56,9 @@ export default async function SnailDetailPage({ params }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex justify-between items-start mb-4">
           <h1 className="text-2xl font-bold text-gray-900">{snail.name}</h1>
-          {snail.yearAwarded && (
+          {snail.yearFirstAwarded && (
             <span className="text-sm bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
-              {snail.yearAwarded}
+              {snail.yearFirstAwarded}
             </span>
           )}
         </div>
