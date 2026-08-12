@@ -7,7 +7,12 @@ import {
   stageRequirements,
   validateStageChange,
 } from "@/lib/stage-requirements";
-import { pipelineStages, sideTrackStages, stageLabel } from "@/lib/pipeline-stages";
+import {
+  evaluateStageMove,
+  pipelineStages,
+  sideTrackStages,
+  stageLabel,
+} from "@/lib/pipeline-stages";
 
 type PipelineProgressProps = {
   track: string;
@@ -37,7 +42,6 @@ export default function PipelineProgress({
   const currentIndex = stages.indexOf(currentStage);
   const isSideTrack = sideTrackStages.includes(currentStage);
   const isAwaitingBoard = currentStage === "board_review";
-  const isDeferred = currentStage === "deferred";
   const activeIndex = isSideTrack ? -1 : currentIndex;
   const isLastStage = currentIndex === stages.length - 1;
 
@@ -49,9 +53,25 @@ export default function PipelineProgress({
 
   const ctaHint = stageCTAHints[currentStage];
 
-  async function handleAdvance(targetStage: string) {
+  /** What moving to `stage` would mean for this snail, per the shared rule. */
+  function move(stage: string) {
+    return evaluateStageMove(track, currentStage, stage);
+  }
+
+  async function handleMove(targetStage: string) {
     if (!snailId) return;
-    if (!confirm(`Advance to "${stageLabel(targetStage)}"?`)) return;
+
+    // The confirm has to say which of the two things is happening: advancing a
+    // snail is a claim about the applicant, moving it back is an admission about
+    // the record. Same click, very different meaning.
+    const label = stageLabel(targetStage);
+    const prompt = isSideTrack
+      ? `Bring this snail back into the pipeline at "${label}"?`
+      : move(targetStage).isProgress
+        ? `Advance to "${label}"?`
+        : `Move back to "${label}"? This corrects the record — it won't count as contact with the business.`;
+    if (!confirm(prompt)) return;
+
     setAdvancing(true);
     const res = await fetch(`/api/admin/snails/${snailId}/advance`, {
       method: "POST",
@@ -61,11 +81,14 @@ export default function PipelineProgress({
     setAdvancing(false);
     if (res.ok) {
       onStageChange?.();
+    } else {
+      const e = await res.json().catch(() => ({}));
+      alert(e.error || "Something went wrong");
     }
   }
 
   async function handleDecision(
-    outcome: "approved" | "rejected" | "reopen",
+    outcome: "approved" | "rejected",
     extra: Record<string, unknown> = {}
   ) {
     if (!snailId) return;
@@ -101,11 +124,6 @@ export default function PipelineProgress({
     handleDecision("rejected", { reason });
   }
 
-  function onReopen() {
-    if (!confirm("Reopen this applicant back into the pipeline to reapply?")) return;
-    handleDecision("reopen");
-  }
-
   return (
     <div className="space-y-3">
       {/* Arrow step bar */}
@@ -124,21 +142,27 @@ export default function PipelineProgress({
             (r) => r.label
           );
 
-          const blockedByReqs = !isAdmin && hasUnmetReqs;
-          const canClick = isNext && snailId && !advancing && !blockedByReqs;
+          // Requirements gate forward moves only. Going back is a correction, so
+          // there's nothing to have finished first.
+          const { allowed, isProgress } = move(stage);
+          const blockedByReqs = !isAdmin && isProgress && hasUnmetReqs;
+          const canClick = allowed && !!snailId && !advancing && !blockedByReqs;
+          const isBackwards = canClick && !isProgress;
           const Tag = canClick ? "button" : "div";
 
           return (
             <Tag
               key={stage}
               type={canClick ? "button" : undefined}
-              onClick={canClick ? () => handleAdvance(stage) : undefined}
+              onClick={canClick ? () => handleMove(stage) : undefined}
               title={
-                isNext
-                  ? `Click to advance to ${stageLabel(stage)}${hasUnmetReqs ? ` (requires: ${reqLabels.join(", ")})` : ""}`
-                  : isFuture && reqLabels.length > 0
-                    ? `Requires: ${reqLabels.join(", ")}`
-                    : stage
+                isBackwards
+                  ? `Click to move back to ${stageLabel(stage)} (corrects the record)`
+                  : canClick
+                    ? `Click to ${isSideTrack ? "re-enter the pipeline at" : "advance to"} ${stageLabel(stage)}${hasUnmetReqs ? ` (requires: ${reqLabels.join(", ")})` : ""}`
+                    : isFuture && reqLabels.length > 0
+                      ? `Requires: ${reqLabels.join(", ")}`
+                      : stage
               }
               className={`
                 flex items-center justify-center gap-1.5 px-3 py-2.5
@@ -146,8 +170,8 @@ export default function PipelineProgress({
                 ${i > 0 ? "border-l border-white/30" : ""}
                 ${
                   isCompleted || isCurrent
-                    ? "bg-amber-700 text-white"
-                    : isNext && canClick
+                    ? `bg-amber-700 text-white${isBackwards ? " cursor-pointer hover:bg-amber-800 transition-colors" : ""}`
+                    : canClick
                       ? "bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200 transition-colors"
                       : "bg-gray-50 text-gray-400"
                 }
@@ -193,15 +217,10 @@ export default function PipelineProgress({
             </svg>
             Currently {stageLabel(currentStage)}
           </div>
-          {snailId && isDeferred && (
-            <button
-              type="button"
-              onClick={onReopen}
-              disabled={advancing}
-              className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-200 disabled:opacity-50 transition-colors"
-            >
-              Reopen to reapply
-            </button>
+          {snailId && (
+            <span className="text-xs text-gray-500">
+              Pick any stage above to bring it back into the pipeline.
+            </span>
           )}
         </div>
       )}

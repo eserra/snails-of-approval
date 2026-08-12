@@ -12,7 +12,8 @@ type Props = {
   title: string;
   snailId: number;
   children: React.ReactNode;
-  EditForm: React.ComponentType<EditFormProps>;
+  /** Omit for a display-only section — no Edit affordance is rendered. */
+  EditForm?: React.ComponentType<EditFormProps>;
 };
 
 export default function DetailSection({
@@ -48,7 +49,7 @@ export default function DetailSection({
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {!editing && (
+        {!editing && EditForm && (
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -78,7 +79,7 @@ export default function DetailSection({
         </p>
       )}
 
-      {editing ? (
+      {editing && EditForm ? (
         <EditForm
           onSave={handleSave}
           onCancel={() => {

@@ -238,21 +238,23 @@ function InfoEditForm({ onSave, onCancel, saving, snail, chapters, categories }:
   );
 }
 
+/**
+ * Only the blocked reason. Stage and track used to be dropdowns here, which made
+ * a second way to move a snail through the pipeline that disagreed with the
+ * pipeline bar about direction, permissions and requirements. The bar is now the
+ * only way a snail changes stage; a snail enters at whatever stage it's created
+ * at, and moves from there.
+ *
+ * Rendered only for a blocked snail (see the Pipeline section below), so this is
+ * never an edit form with nothing in it.
+ */
 function PipelineEditForm({ onSave, onCancel, saving, snail }: EditFormProps & { snail: SnailData }) {
   const [f, setF] = useState({
-    track: snail.track,
-    stage: snail.stage || "",
     blockedReason: (snail.blockedReason as string) || "",
   });
-  const leadStages = ["lapsed", "new", "contacted", "applied", "visited", "board_review", "deferred", "blocked"];
-  const activeStages = ["onboarding", "active", "renewal_due", "renewal_submitted", "blocked"];
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className={labelClass}>Track</label><select value={f.track} onChange={(e) => setF({ ...f, track: e.target.value, stage: e.target.value === "lead" ? "new" : "onboarding" })} className={`${inputClass} bg-white`}><option value="lead">Lead</option><option value="active">Active</option></select></div>
-        <div><label className={labelClass}>Stage</label><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value })} className={`${inputClass} bg-white`}>{(f.track === "lead" ? leadStages : activeStages).map((s) => (<option key={s} value={s}>{stageLabel(s)}</option>))}</select></div>
-        {f.stage === "blocked" && <div className="sm:col-span-2"><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>}
-      </div>
+      <div><label className={labelClass}>Blocked Reason</label><input value={f.blockedReason} onChange={(e) => setF({ ...f, blockedReason: e.target.value })} className={inputClass} /></div>
       <SaveCancel onSave={() => onSave(f)} onCancel={onCancel} saving={saving} />
     </div>
   );
@@ -1033,7 +1035,11 @@ export default function SnailDetail({ snail }: { snail: SnailData }) {
       </DetailSection>
 
       {/* Pipeline */}
-      <DetailSection title="Pipeline" snailId={snail.id} EditForm={(props) => <PipelineEditForm {...props} snail={snail} />}>
+      <DetailSection
+        title="Pipeline"
+        snailId={snail.id}
+        EditForm={snail.stage === "blocked" ? (props) => <PipelineEditForm {...props} snail={snail} /> : undefined}
+      >
         <dl className="grid gap-2 sm:grid-cols-2">
           <Field label="Track" value={<span className="capitalize">{snail.track}</span>} />
           <Field label="Stage" value={stageLabel(snail.stage as string | null)} />
