@@ -42,3 +42,7 @@ next-env.d.ts
 
 /app/generated/prisma
 .env*.local
+
+# Source spreadsheets and generated import payloads. These carry awardee
+# contact emails, and this repo is public.
+/data
