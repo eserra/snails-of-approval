@@ -87,12 +87,14 @@ function filterQuery(
   tab: Tab,
   mineOnly: boolean,
   notOnMapOnly: boolean,
-  stage: string | null
+  stage: string | null,
+  year: string
 ) {
   const params = new URLSearchParams({ tab });
   if (mineOnly) params.set("mine", "1");
   if (notOnMapOnly) params.set("notOnMap", "1");
   if (stage) params.set("stage", stage);
+  if (year) params.set("year", year);
   return params.toString();
 }
 
@@ -111,6 +113,11 @@ export default function AdminSnailsPage() {
   const [stage, setStage] = useState<string | null>(null);
   const [mineOnly, setMineOnly] = useState(false);
   const [notOnMapOnly, setNotOnMapOnly] = useState(false);
+  // The award year to narrow to, as the raw select value ("" for every year), and
+  // the years the data actually holds — no point offering 2019 if nothing is from
+  // 2019. The server validates the value regardless.
+  const [year, setYear] = useState("");
+  const [years, setYears] = useState<number[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [mcSyncing, setMcSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -142,13 +149,14 @@ export default function AdminSnailsPage() {
   function loadSnails() {
     setLoading(true);
     return fetch(
-      `/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly, stage)}`
+      `/api/admin/snails?${filterQuery(tab, mineOnly, notOnMapOnly, stage, year)}`
     )
       .then((r) => r.json())
       .then((data) => {
         setSnails(data.snails);
         setCounts(data.counts);
         setStageCounts(data.stageCounts ?? {});
+        setYears(data.years ?? []);
         setLoading(false);
       });
   }
@@ -157,7 +165,7 @@ export default function AdminSnailsPage() {
   useEffect(() => {
     loadSnails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, mineOnly, notOnMapOnly, stage]);
+  }, [tab, mineOnly, notOnMapOnly, stage, year]);
 
   async function handleSyncMap() {
     setSyncing(true);
@@ -190,7 +198,7 @@ export default function AdminSnailsPage() {
     setSyncResult(null);
     try {
       const res = await fetch(
-        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly, stage)}`
+        `/api/admin/export?${filterQuery(tab, mineOnly, notOnMapOnly, stage, year)}`
       );
       if (!res.ok) throw new Error();
       const blob = await res.blob();
@@ -377,6 +385,24 @@ export default function AdminSnailsPage() {
         />
         Not on SFUSA map
       </label>
+
+      {/* Award year. "First awarded" is the only year on record — recertification
+          isn't modelled — so this finds the snails newly awarded that year. */}
+      <label className="flex items-center gap-2 text-sm text-gray-600">
+        <span>Awarded</span>
+        <select
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          className="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white text-gray-700 focus:border-amber-500 focus:ring-amber-500"
+        >
+          <option value="">Any year</option>
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </label>
       </div>
 
       {/* Stage filter — only the tabs that map to a funnel get one. "Lapsed" is
@@ -433,13 +459,15 @@ export default function AdminSnailsPage() {
           <p className="text-gray-500">
             {/* Name the stage when one is selected, so an empty table reads as
                 "nothing at this stage" rather than "nothing in this tab". */}
-            {mineOnly
-              ? "No snails assigned to you in this view."
-              : stage
-                ? `No ${tab} at ${stageLabel(stage)}.`
-                : tab === "all"
-                  ? "No snails yet. Create your first one!"
-                  : `No ${tab} snails.`}
+            {year
+              ? `No ${tab === "all" ? "snails" : tab} first awarded in ${year}.`
+              : mineOnly
+                ? "No snails assigned to you in this view."
+                : stage
+                  ? `No ${tab} at ${stageLabel(stage)}.`
+                  : tab === "all"
+                    ? "No snails yet. Create your first one!"
+                    : `No ${tab} snails.`}
           </p>
         </div>
       ) : (

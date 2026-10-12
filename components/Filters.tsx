@@ -10,14 +10,20 @@ export default function Filters({ className = "" }: { className?: string }) {
   const searchParams = useSearchParams();
   const [chapters, setChapters] = useState<FilterOption[]>([]);
   const [categories, setCategories] = useState<FilterOption[]>([]);
+  // Read from the data rather than a window off the current year: the award goes
+  // back to 2007, and a fixed window would hide every snail older than it.
+  const [years, setYears] = useState<number[]>([]);
 
   useEffect(() => {
-    Promise.all([fetch("/api/chapters"), fetch("/api/categories")]).then(
-      async ([chapRes, catRes]) => {
-        setChapters(await chapRes.json());
-        setCategories(await catRes.json());
-      }
-    );
+    Promise.all([
+      fetch("/api/chapters"),
+      fetch("/api/categories"),
+      fetch("/api/snails/years"),
+    ]).then(async ([chapRes, catRes, yearRes]) => {
+      setChapters(await chapRes.json());
+      setCategories(await catRes.json());
+      setYears(await yearRes.json());
+    });
   }, []);
 
   const currentChapter = searchParams.get("chapter") || "";
@@ -69,13 +75,11 @@ export default function Filters({ className = "" }: { className?: string }) {
         className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
       >
         <option value="">All Years</option>
-        {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(
-          (y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          )
-        )}
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
       </select>
 
       {(currentChapter || currentCategory || currentYear) && (
