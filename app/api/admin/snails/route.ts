@@ -12,15 +12,16 @@ import {
 import {
   parseStage,
   parseTab,
+  parseYear,
   snailListWhere,
   stagesForTab,
   tabWhere,
 } from "@/lib/snail-filters";
 import { sanitizeRoles } from "@/lib/contact-roles";
 
-// GET /api/admin/snails?tab=&mine=&notOnMap=&stage= — the admin Snails table plus
-// the count badges, filtered server-side so the export can share the exact same
-// rules (see lib/snail-filters.ts).
+// GET /api/admin/snails?tab=&mine=&notOnMap=&stage=&year= — the admin Snails table
+// plus the count badges, filtered server-side so the export can share the exact
+// same rules (see lib/snail-filters.ts).
 //
 // Two sets of counts, deliberately on different rules. The tab counts are over
 // the whole dataset, independent of every toggle, matching how those badges have
@@ -28,6 +29,10 @@ import { sanitizeRoles } from "@/lib/contact-roles";
 // so they do respect the toggles — "my leads, by stage" is the question the stage
 // bar exists to answer — and they ignore the selected stage, or picking one would
 // zero out every other chip.
+//
+// `years` lists every award year on record, for the year dropdown. Like the tab
+// counts it spans the whole dataset rather than the current view, so choosing a
+// year doesn't strip the other years out of the menu you just used.
 export async function GET(request: NextRequest) {
   try {
     const params = new URL(request.url).searchParams;
@@ -35,12 +40,13 @@ export async function GET(request: NextRequest) {
     const mine = params.get("mine") === "1";
     const notOnMap = params.get("notOnMap") === "1";
     const stage = parseStage(tab, params.get("stage"));
+    const year = parseYear(params.get("year"));
     const token = await getToken({ req: request });
     const userId = token?.sub ? parseInt(token.sub) : null;
 
-    const [snails, leads, active, lapsed, all, byStage] = await Promise.all([
+    const [snails, leads, active, lapsed, all, byStage, byYear] = await Promise.all([
       prisma.snail.findMany({
-        where: snailListWhere({ tab, mine, notOnMap, stage, userId }),
+        where: snailListWhere({ tab, mine, notOnMap, stage, year, userId }),
         orderBy: { name: "asc" },
         include: {
           chapter: { select: { name: true } },
@@ -54,8 +60,13 @@ export async function GET(request: NextRequest) {
       prisma.snail.count(),
       prisma.snail.groupBy({
         by: ["stage"],
-        where: snailListWhere({ tab, mine, notOnMap, userId }),
+        where: snailListWhere({ tab, mine, notOnMap, year, userId }),
         _count: { _all: true },
+      }),
+      prisma.snail.groupBy({
+        by: ["yearFirstAwarded"],
+        where: { yearFirstAwarded: { not: null } },
+        orderBy: { yearFirstAwarded: "desc" },
       }),
     ]);
 
@@ -73,6 +84,7 @@ export async function GET(request: NextRequest) {
       snails,
       counts: { leads, active, lapsed, all },
       stageCounts,
+      years: byYear.map((row) => row.yearFirstAwarded),
     });
   } catch (error) {
     console.error("Failed to fetch snails:", error);

@@ -7,9 +7,14 @@ import {
   snailExportInclude,
   type ExportSnail,
 } from "@/lib/export";
-import { parseStage, parseTab, snailListWhere } from "@/lib/snail-filters";
+import {
+  parseStage,
+  parseTab,
+  parseYear,
+  snailListWhere,
+} from "@/lib/snail-filters";
 
-// GET /api/admin/export?tab=&mine=&notOnMap=&stage= — the CRM snails directory as an
+// GET /api/admin/export?tab=&mine=&notOnMap=&stage=&year= — the CRM snails directory as an
 // .xlsx download, filtered by the same rules as the admin Snails list. It shares
 // the list's `where` builder (lib/snail-filters.ts), so the spreadsheet always
 // matches what's on screen. With no params it exports every snail.
@@ -21,11 +26,12 @@ export async function GET(request: NextRequest) {
   const mine = params.get("mine") === "1";
   const notOnMap = params.get("notOnMap") === "1";
   const stage = parseStage(tab, params.get("stage"));
+  const year = parseYear(params.get("year"));
   const token = await getToken({ req: request });
   const userId = token?.sub ? parseInt(token.sub) : null;
 
   const snails = (await prisma.snail.findMany({
-    where: snailListWhere({ tab, mine, notOnMap, stage, userId }),
+    where: snailListWhere({ tab, mine, notOnMap, stage, year, userId }),
     orderBy: { name: "asc" },
     include: snailExportInclude,
   })) as ExportSnail[];
